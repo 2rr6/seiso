@@ -1,0 +1,44 @@
+---
+source: crates/seiso_rules/tests/cross_file.rs
+expression: diagnostics
+---
+[
+  {
+    "code": "DUP003",
+    "message": "This paragraph closely repeats prose in a higher-priority document.",
+    "filename": "guide.md",
+    "location": {
+      "row": 5,
+      "column": 1
+    },
+    "end_location": {
+      "row": 5,
+      "column": 188
+    },
+    "byte_range": {
+      "start": 21,
+      "end": 208
+    },
+    "fix": null,
+    "url": null,
+    "related": [
+      {
+        "filename": "reference.md",
+        "location": {
+          "row": 14,
+          "column": 1
+        },
+        "end_location": {
+          "row": 14,
+          "column": 188
+        },
+        "byte_range": {
+          "start": 178,
+          "end": 365
+        },
+        "message": "Matching content with higher ownership priority."
+      }
+    ],
+    "suggestion": "Keep the shared definition or explanation in its authoritative document and replace the repeated content with a focused link."
+  }
+]

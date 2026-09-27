@@ -210,6 +210,9 @@ fn rule_documentation_examples_execute_the_published_contract() {
     let root = tempfile::tempdir().unwrap();
     fs::create_dir(root.path().join("docs")).unwrap();
     for rule in seiso_rules::rules() {
+        if rule.requires_index {
+            continue;
+        }
         let documentation = rule.documentation.replace("\r\n", "\n");
         let examples: Vec<_> = documentation
             .split("```markdown\n")

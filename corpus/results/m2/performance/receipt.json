@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "verified_at": "2026-09-27T17:25:32.234842+00:00",
+  "fixture_sha256": "4c7dc11b4aab140ddd829fd67f3f79b21d3ad7feb6aab77be49ced6c83332253",
+  "binary_sha256": "fc2bc32dd653d1a5e093930cca3f5f4b780a8c5065e121e210508e260f35d47a",
+  "benchmark_script_sha256": "4d612cf283c2361ae40532468d4066dd43c9d5196233d31331f5f7dceb4e4280",
+  "files": {
+    "local-stable.json": "41f13150c618e6f6ef7b37112498d03bd37fb164550e39fd724ffad73c30d7b6",
+    "local-preview.json": "18593c8acdbf09b62c1c61c45985940a610942860cd0eef0fa300c05ca890a0a"
+  },
+  "stable_measurements": "local-stable.json",
+  "preview_measurements": "local-preview.json",
+  "stable_repetitions": 7,
+  "stable_measurement_window": "No concurrent project builds, tests, or corpus revalidation runs.",
+  "preview_record_scope": "Use only preview_warm from local-preview.json; its earlier stable samples overlapped corpus revalidation and are superseded by local-stable.json.",
+  "local_absolute_latency_targets_met": true,
+  "cold_warm_disabled_output_identical": true,
+  "hook_output_matches_full_report_filtered_to_edited_file": true,
+  "standard_linux_ci_acceptance": false,
+  "environment_note": "Local WSL2 Linux with inputs on native ext4 storage. Standard GitHub-hosted Linux CI remains a separate acceptance run.",
+  "baseline_policy": "The M1 comparison is informational for this transition, as approved by the project owner. The first M2 run meeting all absolute targets establishes the M2 baseline; subsequent changes retain the ten-percent regression gate.",
+  "preview_note": "The dense duplicate workload reached the 120-second limit. Preview timing is reported separately and is excluded from the stable latency targets."
+}

@@ -32,6 +32,10 @@ The adapter reads the event's `cwd` and `tool_input.file_path`. It checks the
 saved Markdown file and sends concise diagnostics to stderr. Non-Markdown
 paths return success without output.
 
+The workspace index also allows feedback from documents that refer to the
+edited file. Parse caching is shared with ordinary checks; each invocation
+still reads source content and resolves current path policy.
+
 Violations return hook exit code `2`, which sends feedback to Claude. Tool errors
 and incomplete checks return `1` for non-blocking error reporting. A successful
 check returns `0` without output. These mappings follow the
@@ -70,3 +74,8 @@ Use the [exit codes](checking.md#consume-results) as the gate. To review changes
 to exclusions, kind mappings, rule selection, and suppression reasons, save
 `seiso policy` from both revisions and compare the JSON. Review policy
 changes alongside document edits.
+
+For GitHub Actions annotations, use `seiso check --output-format github`.
+For tools that consume SARIF, save `seiso check --output-format sarif` to a
+file and upload it through that tool's integration. Diagnostic output does
+not replace the command's exit status.

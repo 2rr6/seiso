@@ -45,6 +45,14 @@ fn map_text(source: &str, text: &str, span: Span, code: bool) -> Vec<SourceSegme
             };
         }
     }
+    // Most text is verbatim. One linear range preserves every character offset.
+    if &raw[left..right] == text {
+        return vec![SourceSegment {
+            text: Span::new(0, text.len()),
+            source: Span::new(span.start + left, span.start + right),
+            exact: true,
+        }];
+    }
     let mut source_cursor = left;
     let mut text_cursor = 0;
     let mut segments = Vec::new();
@@ -88,7 +96,7 @@ fn map_text(source: &str, text: &str, span: Span, code: bool) -> Vec<SourceSegme
         if expected.starts_with(&decoded) {
             // One reference may expand to multiple characters, all from the same syntax.
             for (offset, decoded_char) in decoded.char_indices() {
-                segments.push(SourceSegment {
+                let segment = SourceSegment {
                     text: Span {
                         start: text_cursor + offset,
                         end: text_cursor + offset + decoded_char.len_utf8(),
@@ -98,7 +106,8 @@ fn map_text(source: &str, text: &str, span: Span, code: bool) -> Vec<SourceSegme
                         end: span.start + source_cursor + size,
                     },
                     exact: true,
-                });
+                };
+                append_segment(&mut segments, segment);
             }
             text_cursor += decoded.len();
             line_start = ch == '\r' || ch == '\n';
@@ -111,6 +120,22 @@ fn map_text(source: &str, text: &str, span: Span, code: bool) -> Vec<SourceSegme
         return coarse(text, span);
     }
     segments
+}
+
+fn append_segment(segments: &mut Vec<SourceSegment>, segment: SourceSegment) {
+    if let Some(previous) = segments.last_mut()
+        && previous.exact
+        && segment.exact
+        && previous.text.end == segment.text.start
+        && previous.source.end == segment.source.start
+        && previous.text.end - previous.text.start == previous.source.end - previous.source.start
+        && segment.text.end - segment.text.start == segment.source.end - segment.source.start
+    {
+        previous.text.end = segment.text.end;
+        previous.source.end = segment.source.end;
+    } else {
+        segments.push(segment);
+    }
 }
 
 fn coarse(text: &str, source: Span) -> Vec<SourceSegment> {
@@ -158,7 +183,7 @@ pub(crate) fn slice_fragment(fragment: &Fragment, start: usize, end: usize) -> F
                     start: left - start,
                     end: right - start,
                 },
-                source: segment.source,
+                source: segment.covered_source(&fragment.text, Span::new(left, right)),
                 exact: segment.exact,
             })
         })
@@ -180,5 +205,69 @@ pub(crate) fn slice_fragment(fragment: &Fragment, start: usize, end: usize) -> F
         text: fragment.text[start..end].to_owned(),
         span,
         mapping,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compact_verbatim_maps_preserve_every_unicode_byte_and_slice() {
+        let text = "English 中文 日本語 🦀 text";
+        let source = format!("before {text} after");
+        let value = fragment(
+            &source,
+            FragmentKind::Text,
+            text,
+            Span::new(7, 7 + text.len()),
+        );
+        assert_eq!(value.mapping.len(), 1);
+        for (offset, ch) in text.char_indices() {
+            for byte in offset..offset + ch.len_utf8() {
+                assert_eq!(
+                    value.source_span(Span::new(byte, byte + 1)),
+                    Some(Span::new(7 + offset, 7 + offset + ch.len_utf8()))
+                );
+            }
+        }
+        let start = text.find('中').unwrap();
+        let end = text.find('🦀').unwrap() + '🦀'.len_utf8();
+        let sliced = slice_fragment(&value, start, end);
+        assert_eq!(sliced.span, Span::new(7 + start, 7 + end));
+        assert_eq!(sliced.mapping.len(), 1);
+        assert_eq!(
+            sliced.source_span(Span::new(0, '中'.len_utf8())),
+            Some(Span::new(7 + start, 7 + start + '中'.len_utf8()))
+        );
+    }
+
+    #[test]
+    fn compact_mapping_keeps_escapes_and_multi_character_entities_indivisible() {
+        let source = "中文 &amp; \\* &NotEqualTilde; finish";
+        let text = "中文 & * ≂̸ finish";
+        let value = fragment(source, FragmentKind::Text, text, Span::new(0, source.len()));
+        for (token, original) in [
+            ("中文", "中文"),
+            ("&", "&amp;"),
+            ("*", "\\*"),
+            ("≂", "&NotEqualTilde;"),
+            ("̸", "&NotEqualTilde;"),
+            ("finish", "finish"),
+        ] {
+            let start = text.find(token).unwrap();
+            let expected = source.find(original).unwrap();
+            assert_eq!(
+                value.source_span(Span::new(start, start + token.len())),
+                Some(Span::new(expected, expected + original.len()))
+            );
+        }
+        let start = text.find("finish").unwrap();
+        let sliced = slice_fragment(&value, start, text.len());
+        assert_eq!(&source[sliced.span.start..sliced.span.end], "finish");
+        assert_eq!(
+            sliced.source_span(Span::new(1, 4)),
+            Some(Span::new(source.len() - 5, source.len() - 2))
+        );
     }
 }

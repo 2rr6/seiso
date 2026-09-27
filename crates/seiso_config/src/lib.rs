@@ -115,6 +115,9 @@ impl Default for LintSettings {
 pub struct DupSettings {
     pub min_identifiers: usize,
     pub min_jaccard: f64,
+    pub min_paragraph_similarity: f64,
+    pub min_paragraph_chars: usize,
+    pub shingle_size: usize,
 }
 
 impl Default for DupSettings {
@@ -122,6 +125,9 @@ impl Default for DupSettings {
         Self {
             min_identifiers: 5,
             min_jaccard: 0.8,
+            min_paragraph_similarity: 0.9,
+            min_paragraph_chars: 80,
+            shingle_size: 5,
         }
     }
 }
@@ -499,6 +505,21 @@ fn validate_settings(settings: &Settings, path: &Path) -> Result<(), ConfigError
         return Err(invalid(
             path,
             "lint.dup.min-jaccard must be a finite number from 0 to 1",
+        ));
+    }
+    if !settings.lint.dup.min_paragraph_similarity.is_finite()
+        || settings.lint.dup.min_paragraph_similarity <= 0.0
+        || settings.lint.dup.min_paragraph_similarity > 1.0
+    {
+        return Err(invalid(
+            path,
+            "lint.dup.min-paragraph-similarity must be greater than 0 and at most 1",
+        ));
+    }
+    if settings.lint.dup.min_paragraph_chars == 0 || settings.lint.dup.shingle_size == 0 {
+        return Err(invalid(
+            path,
+            "lint.dup.min-paragraph-chars and shingle-size must be positive",
         ));
     }
     for dir in &settings.lint.ptr.catalog_dirs {

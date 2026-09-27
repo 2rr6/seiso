@@ -1,0 +1,44 @@
+---
+source: crates/seiso_rules/tests/cross_file.rs
+expression: diagnostics
+---
+[
+  {
+    "code": "DUP001",
+    "message": "This definition block repeats identifiers defined in a higher-priority document.",
+    "filename": "guide.md",
+    "location": {
+      "row": 5,
+      "column": 1
+    },
+    "end_location": {
+      "row": 9,
+      "column": 30
+    },
+    "byte_range": {
+      "start": 21,
+      "end": 151
+    },
+    "fix": null,
+    "url": null,
+    "related": [
+      {
+        "filename": "reference.md",
+        "location": {
+          "row": 8,
+          "column": 1
+        },
+        "end_location": {
+          "row": 13,
+          "column": 1
+        },
+        "byte_range": {
+          "start": 46,
+          "end": 177
+        },
+        "message": "Matching content with higher ownership priority."
+      }
+    ],
+    "suggestion": "Keep the shared definition or explanation in its authoritative document and replace the repeated content with a focused link."
+  }
+]

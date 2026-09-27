@@ -2,7 +2,7 @@
 kind: howto
 ---
 
-# Evaluate single-file rules
+# Evaluate rules
 
 Run from the seiso repository root with the Rust toolchain and Python 3.12
 or later. Restore the pinned document bytes and complete file inventories:
@@ -57,3 +57,35 @@ An accepted protocol exception is supplied explicitly with `--protocol`.
 The acceptance receipt must match the syntax audit and conformance test
 sources. Constructed protocol cases never enter natural precision counts.
 See the [M1 protocol decision](../../docs/evaluation/m1-gate-proposal.md).
+
+## Cross-file evaluation
+
+```sh
+python scripts/evaluate_m2.py --output corpus/reports/m2-candidate
+```
+
+Each upstream repository forms its own workspace. The index uses the pinned
+Git inventory for physical paths and the original selected Markdown for
+anchors and duplicate content. An existing file outside the document sample
+has unknown anchors. Symlinks and submodules remain undetermined.
+
+The evaluator reverses source, document, and inventory order for its second
+run and requires identical output. It applies single-file and cross-file
+diagnostics together before suppression. It records all implemented preview
+rules; new rules remain preview until their independent acceptance gates pass.
+
+Review every new rule's diagnoses with the original primary and related
+source ranges. Report TP, FP, uncertain, sample count, precision, and
+language/kind groups for each split. A rule with no holdout diagnoses has
+unavailable precision, rather than a perfect score.
+
+Compare two reports over the same locked inputs:
+
+```sh
+python scripts/ecosystem_diff.py before/diagnostics.json.gz after/diagnostics.json.gz --output corpus/reports/diff
+```
+
+The JSON retains every added, removed, and changed diagnosis, including
+related locations. The Markdown view limits individual entries for workflow
+summaries; the artifact contains the full result. Changing corpus locks or
+kind profiles requires a separate review before comparing rule behavior.

@@ -11,6 +11,36 @@ fn fragments(document: &Document) -> impl Iterator<Item = &seiso_md::Fragment> {
         .flat_map(|sentence| &sentence.fragments)
 }
 
+#[test]
+fn heading_facts_keep_rendered_spacing_and_alt_text_without_html_or_destinations() {
+    let source = "# Hello!  *World*. <span id=custom>Value</span> ![icon](icon.png) &amp; `code`\n";
+    let document = parse(source).unwrap();
+    assert_eq!(
+        document.sections[1].heading.as_deref(),
+        Some("Hello!  World. Value icon & code")
+    );
+    assert_eq!(
+        document.sections[1].heading_span,
+        Some(Span::new(0, source.len() - 1))
+    );
+    assert!(
+        document
+            .links
+            .iter()
+            .any(|link| link.destination == "icon.png" && link.image)
+    );
+    assert_source_ranges(&document);
+    let code = fragments(&document)
+        .find(|fragment| fragment.kind == FragmentKind::InlineCode)
+        .unwrap();
+    assert_eq!(&source[code.span.start..code.span.end], "`code`");
+    let escaped = parse("# \\<span> and `a < b`\n").unwrap();
+    assert_eq!(
+        escaped.sections[1].heading.as_deref(),
+        Some("<span> and a < b")
+    );
+}
+
 fn assert_source_ranges(document: &Document) {
     let valid = |span: Span| {
         assert!(

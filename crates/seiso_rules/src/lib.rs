@@ -1,5 +1,7 @@
 //! Single-document rules, rule documentation, and suppression evaluation.
 
+pub mod cross_file;
+pub mod fixes;
 mod links;
 pub mod normative;
 pub mod suppression;
@@ -15,9 +17,16 @@ use serde::Serialize;
 pub use links::{LocalWorkspaceFiles, PathStatus, WorkspaceFiles};
 pub use suppression::SuppressionRecord;
 
-pub const IMPLEMENTED_RULES: [&str; 11] = [
+pub const SINGLE_FILE_RULES: [&str; 11] = [
     "KND001", "KND002", "STL001", "STL003", "PTR001", "PTR003", "LNK001", "RAT002", "VOX001",
     "SUP001", "SUP002",
+];
+pub const CROSS_FILE_RULES: [&str; 7] = [
+    "PTR002", "LNK002", "DUP001", "DUP002", "DUP003", "OWN001", "OWN002",
+];
+pub const IMPLEMENTED_RULES: [&str; 18] = [
+    "KND001", "KND002", "STL001", "STL003", "PTR001", "PTR002", "PTR003", "LNK001", "LNK002",
+    "DUP001", "DUP002", "DUP003", "OWN001", "OWN002", "RAT002", "VOX001", "SUP001", "SUP002",
 ];
 
 #[derive(Clone, Debug, Serialize)]
@@ -91,6 +100,18 @@ pub struct CheckResult {
     pub errors: Vec<String>,
 }
 
+pub struct RawCheckResult {
+    pub kind: KindResolution,
+    pub enabled_rules: BTreeSet<String>,
+    pub diagnostics: Vec<Diagnostic>,
+    pub incomplete_rules: BTreeSet<String>,
+    pub errors: Vec<String>,
+}
+
+pub fn check_raw(context: &CheckContext<'_>) -> Result<RawCheckResult, ConfigError> {
+    check_raw_with_files(context, &LocalWorkspaceFiles)
+}
+
 pub fn check(context: &CheckContext<'_>) -> Result<CheckResult, ConfigError> {
     check_with_files(context, &LocalWorkspaceFiles)
 }
@@ -100,23 +121,38 @@ pub fn check_with_files(
     context: &CheckContext<'_>,
     files: &dyn WorkspaceFiles,
 ) -> Result<CheckResult, ConfigError> {
+    Ok(finish_check(
+        context.document,
+        context.filename,
+        check_raw_with_files(context, files)?,
+    ))
+}
+
+pub fn check_raw_with_files(
+    context: &CheckContext<'_>,
+    files: &dyn WorkspaceFiles,
+) -> Result<RawCheckResult, ConfigError> {
     let kind = resolve_kind(context.document, context.config.kind_for(context.path));
     let enabled: BTreeSet<String> = context
         .config
         .enabled_rules(context.path, kind.value.as_deref(), context.overrides)?
         .into_iter()
-        .filter(|code| IMPLEMENTED_RULES.contains(code))
+        .filter(|code| SINGLE_FILE_RULES.contains(code))
         .map(str::to_owned)
         .collect();
     let mut diagnostics = kind_diagnostics(context, &enabled);
-    diagnostics.extend(normative::check(
-        context.document,
-        context.filename,
-        context.path,
-        context.workspace_root,
-        context.config,
-        &enabled,
-    ));
+    if enabled.iter().any(|code| {
+        ["STL001", "STL003", "PTR001", "PTR003", "RAT002", "VOX001"].contains(&code.as_str())
+    }) {
+        diagnostics.extend(normative::check(
+            context.document,
+            context.filename,
+            context.path,
+            context.workspace_root,
+            context.config,
+            &enabled,
+        ));
+    }
     let mut incomplete = BTreeSet::new();
     let mut errors = Vec::new();
     if enabled.contains("LNK001") {
@@ -127,28 +163,40 @@ pub fn check_with_files(
             incomplete.insert("LNK001".to_owned());
         }
     }
-    let result = if kind.value.as_deref() == Some("generated") {
+    Ok(RawCheckResult {
+        kind,
+        enabled_rules: enabled,
+        diagnostics,
+        incomplete_rules: incomplete,
+        errors,
+    })
+}
+
+pub fn finish_check(document: &Document, filename: &str, raw: RawCheckResult) -> CheckResult {
+    let RawCheckResult {
+        kind,
+        enabled_rules: enabled,
+        diagnostics,
+        incomplete_rules: incomplete,
+        errors,
+    } = raw;
+    let mut result = if kind.value.as_deref() == Some("generated") {
         suppression::SuppressionResult {
             diagnostics: Vec::new(),
             suppressions: Vec::new(),
         }
     } else {
-        suppression::apply(
-            context.document,
-            context.filename,
-            diagnostics,
-            &enabled,
-            &incomplete,
-        )
+        suppression::apply(document, filename, diagnostics, &enabled, &incomplete)
     };
+    fixes::attach_fixes(document, &result.suppressions, &mut result.diagnostics);
     let diagnostics = sorted_diagnostics(&result.diagnostics);
-    Ok(CheckResult {
+    CheckResult {
         kind,
         enabled_rules: enabled.into_iter().collect(),
         diagnostics,
         suppressions: result.suppressions,
         errors,
-    })
+    }
 }
 
 fn kind_diagnostics(context: &CheckContext<'_>, enabled: &BTreeSet<String>) -> Vec<Diagnostic> {
@@ -223,20 +271,23 @@ impl Rule {
 
 macro_rules! rule {
     ($code:literal, $name:literal, $basis:literal, $reads:expr, $fs:expr) => {
+        rule!($code, $name, $basis, $reads, $fs, false)
+    };
+    ($code:literal, $name:literal, $basis:literal, $reads:expr, $fs:expr, $index:expr) => {
         Rule {
             code: $code,
             name: $name,
             basis: $basis,
             reads: $reads,
             requires_filesystem: $fs,
-            requires_index: false,
+            requires_index: $index,
             documentation: include_str!(concat!("../docs/", $code, ".md")),
         }
     };
 }
 
 use FragmentKind::{InlineCode, LinkDestination, LinkText, Text};
-static RULES: [Rule; 11] = [
+static RULES: [Rule; 18] = [
     rule!("KND001", "missing-document-kind", "consistency", &[], false),
     rule!("KND002", "invalid-document-kind", "consistency", &[], false),
     rule!(
@@ -290,6 +341,62 @@ static RULES: [Rule; 11] = [
     ),
     rule!("SUP001", "invalid-suppression", "consistency", &[], false),
     rule!("SUP002", "unused-suppression", "consistency", &[], false),
+    rule!(
+        "PTR002",
+        "directory-pointer",
+        "heuristic",
+        &[LinkDestination],
+        true,
+        true
+    ),
+    rule!(
+        "LNK002",
+        "missing-local-anchor",
+        "consistency",
+        &[LinkDestination],
+        true,
+        true
+    ),
+    rule!(
+        "DUP001",
+        "repeated-definitions",
+        "heuristic",
+        &[InlineCode],
+        false,
+        true
+    ),
+    rule!(
+        "DUP002",
+        "repeated-content-pointer",
+        "heuristic",
+        &[InlineCode, LinkDestination],
+        false,
+        true
+    ),
+    rule!(
+        "DUP003",
+        "similar-paragraphs",
+        "heuristic",
+        &[Text, LinkText, InlineCode],
+        false,
+        true
+    ),
+    rule!(
+        "OWN001",
+        "plan-definition-overlap",
+        "heuristic",
+        &[InlineCode],
+        false,
+        true
+    ),
+    rule!(
+        "OWN002",
+        "ambiguous-owner",
+        "heuristic",
+        &[InlineCode, Text, LinkText],
+        false,
+        true
+    ),
 ];
 
 pub fn rules() -> &'static [Rule] {

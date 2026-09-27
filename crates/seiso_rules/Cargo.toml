@@ -13,6 +13,7 @@ regex.workspace = true
 seiso_config.workspace = true
 seiso_diagnostics.workspace = true
 seiso_md.workspace = true
+seiso_index.workspace = true
 serde.workspace = true
 
 [dev-dependencies]

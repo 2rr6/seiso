@@ -1,0 +1,82 @@
+---
+source: crates/seiso_rules/tests/cross_file.rs
+expression: diagnostics
+---
+[
+  {
+    "code": "OWN002",
+    "message": "Directly matching content has multiple owners at the same highest priority.",
+    "filename": "guide.md",
+    "location": {
+      "row": 5,
+      "column": 1
+    },
+    "end_location": {
+      "row": 9,
+      "column": 30
+    },
+    "byte_range": {
+      "start": 25,
+      "end": 155
+    },
+    "fix": null,
+    "url": null,
+    "related": [
+      {
+        "filename": "reference.md",
+        "location": {
+          "row": 8,
+          "column": 1
+        },
+        "end_location": {
+          "row": 13,
+          "column": 1
+        },
+        "byte_range": {
+          "start": 46,
+          "end": 177
+        },
+        "message": "Matching content with the same ownership priority."
+      }
+    ],
+    "suggestion": "Choose one authoritative document, declare canonical: true there if needed, and link to it from the other documents."
+  },
+  {
+    "code": "OWN002",
+    "message": "Directly matching content has multiple owners at the same highest priority.",
+    "filename": "reference.md",
+    "location": {
+      "row": 8,
+      "column": 1
+    },
+    "end_location": {
+      "row": 13,
+      "column": 1
+    },
+    "byte_range": {
+      "start": 46,
+      "end": 177
+    },
+    "fix": null,
+    "url": null,
+    "related": [
+      {
+        "filename": "guide.md",
+        "location": {
+          "row": 5,
+          "column": 1
+        },
+        "end_location": {
+          "row": 9,
+          "column": 30
+        },
+        "byte_range": {
+          "start": 25,
+          "end": 155
+        },
+        "message": "Matching content with the same ownership priority."
+      }
+    ],
+    "suggestion": "Choose one authoritative document, declare canonical: true there if needed, and link to it from the other documents."
+  }
+]

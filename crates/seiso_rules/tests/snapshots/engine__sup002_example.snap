@@ -19,7 +19,19 @@ expression: result.diagnostics
       "start": 0,
       "end": 78
     },
-    "fix": null,
+    "fix": {
+      "message": "Remove unused suppression codes.",
+      "applicability": "safe",
+      "edits": [
+        {
+          "byte_range": {
+            "start": 0,
+            "end": 79
+          },
+          "content": ""
+        }
+      ]
+    },
     "url": null,
     "related": [],
     "suggestion": "Remove LNK001 from the declaration, or remove the comment if it lists no other rules."

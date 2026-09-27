@@ -32,6 +32,11 @@ Paths are relative to the calling directory. Reported filenames are relative to
 the workspace root. Explicit paths still respect `.gitignore`, `include`, and
 `exclude`; the nearest configuration determines each file's policy.
 
+Every check reads the included workspace documents. Single-file rules run on
+the selected files; cross-file rules use the full index and report a diagnosis
+when its primary or related location is selected. Checking a renamed heading's
+file can therefore report a broken anchor in a document that links to it.
+
 Use `seiso check --help` for command options and `seiso rule --all` for the
 implemented rules, their examples, and exceptions. `--select` replaces the
 configured selection; `--extend-select` adds to it.
@@ -53,13 +58,24 @@ be new, but it must be inside the workspace and included by its policy.
 ```sh
 seiso check --output-format concise
 seiso check --output-format json
+seiso check --output-format sarif > seiso.sarif
+seiso check --output-format github
+seiso check --statistics
 seiso policy > policy.json
+seiso index --dump > index.json
 ```
 
 Text includes source excerpts. Concise output puts each diagnostic and its
 suggestion on one line. JSON is a sorted array of diagnostics; tool errors go to
 stderr. Policy JSON includes effective settings, kind resolution, enabled rules,
-configuration exclusions, and suppression records.
+configuration exclusions, and suppression records. The index dump includes
+effective kind, language, domain, anchors, and outgoing links.
+
+SARIF includes primary and related locations and available safe fixes. GitHub
+output uses workflow annotations. With `--statistics`, JSON becomes an object
+with `diagnostics` and `statistics`; SARIF stores statistics in run properties.
+Statistics include rule counts and suppression reasons and states. GitHub
+statistics go to stderr so stdout contains only annotation commands.
 
 | Exit code | Meaning |
 | --- | --- |
@@ -81,5 +97,28 @@ Place a suppression before the relevant block and give a reviewable reason:
 
 Use complete rule codes. `seiso rule SUP001` explains accepted syntax and
 `seiso rule SUP002` explains how unused suppressions are reported.
+
+## Apply safe fixes
+
+```sh
+seiso check --fix
+```
+
+The safe fixer removes confirmed unused suppression codes and checks the
+result again. It preserves codes that are active, disabled, invalid, or
+undetermined, including preview rules that were not enabled. A partially
+stale declaration keeps its remaining codes and reason. No fixes are applied
+after an incomplete check, and stdin checks cannot use `--fix`.
+
+## Inspect cached results
+
+Checks store content-derived parse data in `.seiso_cache/`. Each run reads and
+hashes the sources, then resolves path policy and links against the current
+workspace. Moving a file, editing configuration, or deleting a link target
+takes effect even when source content was cached.
+
+Use `--no-cache` to bypass cache reads and writes. Missing, corrupt, outdated,
+or unwritable cache entries fall back to parsing; diagnostic output is the
+same with a cold, warm, or disabled cache.
 
 For editor and submission gates, follow [Integrate checks](integrations.md).

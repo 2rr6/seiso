@@ -11,6 +11,9 @@ use serde::Serialize;
 
 mod commands;
 
+#[global_allocator]
+static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 #[derive(Parser)]
 #[command(
     name = "seiso",
@@ -28,6 +31,8 @@ enum Command {
     Check(commands::CheckArgs),
     /// Print the effective file policies as deterministic JSON.
     Policy(commands::PolicyArgs),
+    /// Inspect headings, links, and file roles in the current workspace index.
+    Index(commands::IndexArgs),
     /// Print a rule's explanation and examples.
     Rule(commands::RuleArgs),
     /// Create a configuration with suggested kind mappings.
@@ -87,7 +92,12 @@ fn main() -> ExitCode {
     match run(Cli::parse()) {
         Ok(code) => ExitCode::from(code),
         Err(error) => {
-            eprintln!("seiso: {error}");
+            for line in error.lines() {
+                eprintln!(
+                    "seiso: {}",
+                    line.replace('\r', "\\r").replace("##[", "## [")
+                );
+            }
             ExitCode::from(2)
         }
     }
@@ -98,6 +108,7 @@ fn run(cli: Cli) -> Result<u8, String> {
         Command::Parse(args) => parse_workspace(args),
         Command::Check(args) => commands::check(args),
         Command::Policy(args) => commands::policy(args),
+        Command::Index(args) => commands::index(args),
         Command::Rule(args) => commands::rule(args),
         Command::Init => commands::init(),
         Command::Hook { command } => Ok(commands::hook(command)),
@@ -359,15 +370,45 @@ fn normalize(path: &Path) -> PathBuf {
 }
 
 fn require_workspace_path(root: &Path, path: &Path) -> Result<(), String> {
-    if path.starts_with(root) || identity(path).starts_with(identity(root)) {
-        Ok(())
-    } else {
-        Err(format!(
-            "{} is outside workspace {}; run from its workspace directory.",
-            path.display(),
-            root.display()
-        ))
+    workspace_path(root, path).map(|_| ())
+}
+
+/// Resolve existing aliases, including the parent of a new stdin document.
+fn workspace_path(root: &Path, path: &Path) -> Result<PathBuf, String> {
+    let canonical_root = root
+        .canonicalize()
+        .map_err(|error| format!("Cannot resolve workspace {}: {error}", root.display()))?;
+    for ancestor in path.ancestors() {
+        let resolved = match ancestor.canonicalize() {
+            Ok(resolved) => resolved,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(format!("Cannot resolve {}: {error}", path.display())),
+        };
+        let suffix = path
+            .strip_prefix(ancestor)
+            .map_err(|error| error.to_string())?;
+        if !suffix.as_os_str().is_empty() && !ancestor.is_dir() {
+            return Err(format!(
+                "{} is not a directory; choose a valid workspace path.",
+                ancestor.display()
+            ));
+        }
+        let resolved = resolved.join(suffix);
+        return resolved
+            .strip_prefix(&canonical_root)
+            .map(|relative| root.join(relative))
+            .map_err(|_| {
+                format!(
+                    "{} is outside workspace {}; run from its workspace directory.",
+                    path.display(),
+                    root.display()
+                )
+            });
     }
+    Err(format!(
+        "Cannot resolve {} to an existing workspace directory.",
+        path.display()
+    ))
 }
 
 fn identity(path: &Path) -> PathBuf {

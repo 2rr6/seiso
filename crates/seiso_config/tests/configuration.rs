@@ -461,6 +461,20 @@ fn invalid_values_name_the_setting_and_source() {
         ("[lint.dup]\nmin-identifiers = 0", "min-identifiers"),
         ("[lint.dup]\nmin-jaccard = 1.1", "min-jaccard"),
         ("[lint.dup]\nmin-jaccard = nan", "min-jaccard"),
+        (
+            "[lint.dup]\nmin-paragraph-similarity = 0.0",
+            "min-paragraph-similarity",
+        ),
+        (
+            "[lint.dup]\nmin-paragraph-similarity = 1.1",
+            "min-paragraph-similarity",
+        ),
+        (
+            "[lint.dup]\nmin-paragraph-similarity = nan",
+            "min-paragraph-similarity",
+        ),
+        ("[lint.dup]\nmin-paragraph-chars = 0", "min-paragraph-chars"),
+        ("[lint.dup]\nshingle-size = 0", "shingle-size"),
         ("[lint.ptr]\ncatalog-dirs = ['']", "catalog-dirs"),
         ("[lint.per-file-ignores]\n'[' = ['ALL']", "glob"),
         ("[lint.per-file-ignores]\n'**' = ['UNKNOWN']", "UNKNOWN"),
@@ -514,6 +528,9 @@ languages = ["en", "zh", "ja"]
 [lint.dup]
 min-identifiers = 5
 min-jaccard = 0.8
+min-paragraph-similarity = 0.95
+min-paragraph-chars = 100
+shingle-size = 7
 [lint.ptr]
 catalog-dirs = ["locales/", "migrations/"]
 [lint.lexicon.zh]
@@ -528,4 +545,7 @@ extend-stale-markers = ["截至目前"]
         config.settings.lint.ptr.catalog_dirs,
         ["locales/", "migrations/"]
     );
+    assert_eq!(config.settings.lint.dup.min_paragraph_similarity, 0.95);
+    assert_eq!(config.settings.lint.dup.min_paragraph_chars, 100);
+    assert_eq!(config.settings.lint.dup.shingle_size, 7);
 }

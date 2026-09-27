@@ -175,7 +175,7 @@ fn incomplete_checks_preserve_diagnostics_and_override_exit_zero() {
         &["check", "good.md", "--exit-zero", "--output-format", "json"],
         None,
     );
-    assert_eq!(selected.status.code(), Some(0));
+    assert_eq!(selected.status.code(), Some(2));
     assert_eq!(value(&output), value(&selected));
     let missing = run(
         root,
@@ -331,7 +331,7 @@ fn new_stdin_documents_resolve_self_and_workspace_root_links() {
 }
 
 #[test]
-fn future_rule_selections_do_not_execute_or_stale_their_suppressions() {
+fn disabled_preview_rules_do_not_execute_or_stale_their_suppressions() {
     let workspace = workspace();
     let root = workspace.path();
     write(
@@ -543,18 +543,17 @@ fn rule_documents_are_available_and_future_features_are_rejected() {
     assert_eq!(all.status.code(), Some(0));
     let all_text = String::from_utf8_lossy(&all.stdout);
     assert_eq!(all_text.matches("Status: stable.").count(), 5);
-    assert_eq!(all_text.matches("Status: preview.").count(), 6);
+    assert_eq!(all_text.matches("Status: preview.").count(), 13);
     for code in [
         "KND001", "KND002", "STL001", "STL003", "PTR001", "PTR003", "LNK001", "RAT002", "VOX001",
-        "SUP001", "SUP002",
+        "SUP001", "SUP002", "LNK002", "PTR002", "DUP001", "DUP002", "DUP003", "OWN001", "OWN002",
     ] {
         assert!(String::from_utf8_lossy(&all.stdout).contains(code));
     }
     for arguments in [
-        vec!["rule", "LNK002"],
-        vec!["check", "--fix"],
-        vec!["check", "--output-format", "sarif"],
-        vec!["check", "--statistics"],
+        vec!["rule", "LNK999"],
+        vec!["check", "--judge"],
+        vec!["check", "--output-format", "yaml"],
     ] {
         assert_eq!(run(root, &arguments, None).status.code(), Some(2));
     }

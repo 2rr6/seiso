@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 use seiso_config::{CliOverrides, Config};
-use seiso_diagnostics::{Diagnostic, Location, Span};
+use seiso_diagnostics::{Applicability, Diagnostic, Location, Span};
 use seiso_rules::suppression::{SuppressionScope, SuppressionState, apply};
 use seiso_rules::{CheckContext, CheckResult, check};
 
@@ -100,7 +100,14 @@ fn assert_exact_comment_location(diagnostic: &Diagnostic, source: &str, comment:
             column: column + comment.chars().count()
         }
     );
-    assert!(diagnostic.fix.is_none());
+    if diagnostic.code == "SUP002" {
+        assert_eq!(
+            diagnostic.fix.as_ref().unwrap().applicability,
+            Applicability::Safe
+        );
+    } else {
+        assert!(diagnostic.fix.is_none());
+    }
 }
 
 #[test]
@@ -240,6 +247,9 @@ fn equal_file_meta_suppressions_receive_no_circular_credit() {
         assert_eq!(record.scope, Some(SuppressionScope::File));
         assert_eq!(record.states["SUP002"], SuppressionState::Stale);
         assert_eq!(record.span, diagnostic.byte_range);
-        assert!(diagnostic.fix.is_none());
+        assert_eq!(
+            diagnostic.fix.as_ref().unwrap().applicability,
+            Applicability::Safe
+        );
     }
 }

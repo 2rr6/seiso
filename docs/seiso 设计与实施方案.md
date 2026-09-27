@@ -501,7 +501,7 @@ agent hook 负责编辑后的即时反馈，最终门禁由提交前检查和 CI
 | --- | --- |
 | pre-commit | seiso 仓库提供 `.pre-commit-hooks.yaml`，hook id 为 `seiso`，只对 Markdown 文件触发 |
 | GitHub Actions | `uvx seiso check --output-format github`，违规显示为 PR 行内注释；SARIF 可上传到 code scanning |
-| 策略变更 | CI 在 base 和 head 上各运行一次 `seiso policy` 并比较，差异单独贴到 PR 评论；建议把 seiso 配置文件加入 CODEOWNERS |
+| 策略变更 | 变更配置时在 base 和 head 上各运行一次 `seiso policy` 并比较，随变更审阅差异；建议把 seiso 配置文件加入 CODEOWNERS |
 | 其他 CI | 直接用 `seiso check` 的退出码做门禁 |
 
 ### 编辑器
@@ -521,7 +521,7 @@ M4 提供 `seiso server`（LSP），在编辑器里实时显示诊断；VS Code 
 | 文档示例 | 规则说明里的每个“示例”和“改成”都作为 fixture 运行 | 说明文档与实际行为一致 |
 | 确定性测试 | 同一快照在冷缓存、热缓存、禁用缓存下各跑一次并打乱文件顺序，输出逐字节一致；带路径检查的结果等于全量结果按报告范围过滤 | 缓存状态和检查路径不影响结果 |
 | 模糊测试 | cargo-fuzz 覆盖解析和文档模型转换 | 任何输入都不 panic |
-| 性能基准 | 在基准仓库和压力样例上计时，CI 与主分支对比 | 速度目标 |
+| 性能基准 | 手动运行基准仓库和压力样例，可选择 Git ref 对比 | 速度目标 |
 
 ### 首批回归场景
 
@@ -551,7 +551,7 @@ M4 提供 `seiso server`（LSP），在编辑器里实时显示诊断；VS Code 
 
 ### 生态回归
 
-仿照 ruff 的 ecosystem check：每个改动规则的 PR 都在评估语料上跑一遍，把新增和消失的诊断贴到 PR 评论里，由人确认。
+在里程碑验收、发布前或大幅修改规则与解析器时，手动运行评估语料，审阅新增、消失和变化的诊断。报告保存在 workflow 摘要与产物中；操作方式见[开发指南](development.md#performance-and-ecosystem-checks)。
 
 ### 使用噪声与可理解性
 
@@ -577,7 +577,7 @@ preview 规则单独计时，不计入上述目标。DUP003 必须先做候选�
 | 快照差异 | 必须在 PR 中显式接受 |
 | 首批回归场景 | 全部通过 |
 | stable 规则验收 | 达到「需求」里的留出集精度目标，或通过明确列出的协议规则验收例外，否则退回 preview |
-| 性能 | 性能基准任一场景比主分支慢 10% 以上时阻止合并 |
+| 性能 | 手动验收时达到上述速度目标；与所选基线的变化记录在报告中，由人审阅。M1 与 M2 执行范围不同，见[基线决定](evaluation/m2-baseline-decision.md) |
 | 模糊测试 | 发现 panic 即阻止发布 |
 
 ## 实施路线图
@@ -588,7 +588,7 @@ preview 规则单独计时，不计入上述目标。DUP003 必须先做候选�
 | --- | --- | --- |
 | M0 地基 | Cargo workspace；markdown-rs → 文档模型，含片段类型与源码映射；配置发现与合并；诊断数据结构，text 与 JSON 输出；insta 快照测试框架；在 crates.io、PyPI、npm 占名并发布 0.0.0 | 评估语料全部文件解析无 panic；中日英混排样例的源码位置正确；两次运行输出逐字节一致 |
 | M1 单文件规则 · 0.1 | 「规则体系」中阶段为 M1 的 11 条规则；suppression 语法与状态判定（SUP002 只报告、不修复）；`seiso rule`、`init`、`policy`、`hook claude-code`；pre-commit 与 maturin 分发；评估语料首批入库并完成诊断标注 | M1 的一致性规则全部达到 stable；规范规则逐条按留出集结果决定是否升级，不设数量目标；规则说明里的示例全部通过 |
-| M2 跨文件规则 · 0.2 | 先按「执行语义」实现工作区、索引、缓存和报告范围，再实现阶段为 M2 的 7 条规则；SUP002 的安全修复；`--statistics`、SARIF 与 GitHub 注释输出；生态回归 CI | 首批回归场景全部通过；性能基准达标；DUP、OWN 各规则在留出集上有精度报告 |
+| M2 跨文件规则 · 0.2 | 先按「执行语义」实现工作区、索引、缓存和报告范围，再实现阶段为 M2 的 7 条规则；SUP002 的安全修复；`--statistics`、SARIF 与 GitHub 注释输出；手动语料回归与性能验收 | 首批回归场景全部通过；性能基准达标；DUP、OWN 各规则在留出集上有精度报告 |
 | M3 启发式规则 · 0.3 | 启发式 section 分类器与 section 类型标注；阶段为 M3 的 9 条规则，均以 preview 发布；编辑回放与修复测试；在调参集上重新校准 M1、M2 规则的默认阈值 | 每条启发式规则都有留出集精度和使用噪声报告，据此决定是否升级 |
 | M4 生态 | `seiso server`（LSP）与 VS Code 扩展；Codex CLI、Cursor 等 agent 的 hook 适配；判断层实验（见「后续：判断层」） | 各子项单独验收 |
 

@@ -4,7 +4,9 @@ The Cargo workspace follows the
 [implementation plan](seiso%20设计与实施方案.md#实施路线图). `seiso_md` owns
 content-derived document data, `seiso_config` owns configuration and path
 policy, `seiso_diagnostics` owns source locations and diagnostic rendering,
-`seiso_rules` owns rule execution and suppression state, and the `seiso`
+`seiso_rules` owns rule execution and suppression state, `seiso_index` owns
+current workspace facts and anchor resolution, `seiso_cache` owns the
+content-addressed parse cache, and the `seiso`
 package in `crates/seiso_cli` joins them in the command-line interface.
 
 ## Build and validate
@@ -32,7 +34,8 @@ python -m unittest discover -s corpus -p 'test_*.py'
 python -m unittest discover -s corpus/evaluation -p 'test_*.py'
 ```
 
-Rule explanations live in [the rules crate](../crates/seiso_rules/docs/).
+Run `seiso rule --all` to read the implemented rules. Their explanations are
+embedded from the Markdown files in `crates/seiso_rules/docs/`.
 Their positive and negative Markdown examples execute as tests; positive
 diagnostics are stored in snapshots. Add regression cases for fragment
 boundaries, languages, source mappings, and suppression scope when changing
@@ -85,5 +88,39 @@ evaluated separately under the implementation plan's later gates. See
 The [M1 acceptance record](evaluation/m1-2026-09-28.md) records the rule-level
 decisions, natural precision results, and accepted protocol exceptions.
 Default checks use stable rules; normative rules remain opt-in until their
-own evidence permits promotion. Repository indexing, parse caching, and safe
-fixes follow the plan's later milestones.
+own evidence permits promotion. The [M2 verification procedure](../corpus/docs/evaluation.md#cross-file-evaluation)
+covers full-workspace rules and their natural diagnostic evidence.
+The [M2 evaluation record](evaluation/m2-2026-09-28.md) records regression
+coverage, preview precision, and performance acceptance status.
+
+## Performance and ecosystem checks
+
+Build a release binary before running the benchmark:
+
+```sh
+cargo build --release --locked -p seiso
+python scripts/benchmark_m2.py --binary target/release/seiso --output target/performance.json
+```
+
+The benchmark generates a deterministic workspace with repeated templates
+and similar paragraphs. It verifies cache output equality and measures cold
+checks, warm checks, and the warm hook including process startup. Preview
+rules are timed separately. Use a native Linux filesystem for local Linux
+measurements; the acceptance thresholds apply to the standard Linux CI runner.
+
+The [CI workflow](../.github/workflows/ci.yml) runs on pull requests targeting
+`main` and pushes to `main`. It checks formatting, Clippy, tests, and the
+repository's documents with stable rules. Further updates cancel an older
+run for the same PR or branch. Use its manual trigger to check another branch
+before opening a PR.
+
+Run [Evaluation](../.github/workflows/evaluation.yml) manually from Actions
+for milestone acceptance, release validation, or substantial rule and parser
+changes. Leave `baseline_ref` empty to compare diagnostics with the recorded
+corpus run and benchmark only the selected revision. Supply a Git ref to run
+diagnostic and performance comparisons against another revision; a pre-M2
+revision uses its recorded M1 diagnostic report.
+
+Evaluation saves complete reports as artifacts and adds diagnostic differences
+to the workflow summary. Absolute latency targets remain acceptance checks;
+relative performance changes are reported for review.

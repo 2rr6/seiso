@@ -183,6 +183,15 @@ pub fn parse_with_options(source: &str, options: ParseOptions) -> Result<Documen
                 &mut document,
                 &mut comment_scanner,
             );
+            if kind == BlockKind::Heading {
+                document.sections[section].heading = Some(
+                    fragments
+                        .iter()
+                        .filter(|fragment| fragment.kind != FragmentKind::LinkDestination)
+                        .map(|fragment| fragment.text.as_str())
+                        .collect(),
+                );
+            }
             for fragment in &fragments {
                 if fragment.kind == FragmentKind::InlineCode && is_identifier(&fragment.text) {
                     document.identifiers.push(Identifier {

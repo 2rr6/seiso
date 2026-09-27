@@ -1,8 +1,10 @@
 //! Source locations, diagnostic data, and deterministic report rendering.
 
+mod outputs;
 mod render;
 mod source_map;
 
+pub use outputs::{render_github, render_sarif};
 pub use render::{render_concise, render_json, render_text, sorted_diagnostics};
 pub use source_map::SourceMap;
 

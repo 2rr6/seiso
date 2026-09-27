@@ -2,15 +2,18 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use clap::{Args, Subcommand, ValueEnum};
 use seiso_config::{CliOverrides, Settings, Workspace};
-use seiso_diagnostics::{Diagnostic, render_concise, render_json, render_text};
+use seiso_diagnostics::{
+    Diagnostic, render_concise, render_github, render_json, render_sarif, render_text,
+};
+use seiso_index::{IndexedFile, WorkspaceIndex};
 use serde::Serialize;
 
 use super::{
-    InputError, absolute, identity, ignored_by_git, is_markdown, normalize, relative,
-    require_workspace_path,
+    InputError, absolute, ignored_by_git, is_markdown, normalize, relative, workspace_path,
 };
 
 #[derive(Args, Default)]
@@ -54,9 +57,15 @@ pub struct CheckArgs {
     /// Return success for violations; incomplete checks still return 2.
     #[arg(long)]
     exit_zero: bool,
-    /// Run without a cache (checks currently always read the current files).
+    /// Read and parse every source without reading or writing the parse cache.
     #[arg(long)]
     no_cache: bool,
+    /// Apply verified safe fixes to reported files.
+    #[arg(long, conflicts_with = "stdin_filename")]
+    fix: bool,
+    /// Count reported diagnostics and include suppression reasons and states.
+    #[arg(long)]
+    statistics: bool,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -64,6 +73,19 @@ enum CheckFormat {
     Text,
     Concise,
     Json,
+    Sarif,
+    Github,
+}
+
+#[derive(Args)]
+pub struct IndexArgs {
+    /// Print the current workspace index as JSON.
+    #[arg(long, required = true)]
+    dump: bool,
+    #[arg(long, value_name = "PATH")]
+    config: Option<PathBuf>,
+    #[arg(long)]
+    no_cache: bool,
 }
 
 #[derive(Args)]
@@ -119,6 +141,7 @@ struct Evaluation {
     sources: BTreeMap<String, String>,
     policy: PolicyReport,
     enabled_count: usize,
+    index: Option<WorkspaceIndex>,
 }
 
 impl Evaluation {
@@ -144,12 +167,21 @@ impl Evaluation {
             CheckFormat::Text => Ok(render_text(&self.diagnostics, &self.sources)),
             CheckFormat::Concise => Ok(render_concise(&self.diagnostics)),
             CheckFormat::Json => render_json(&self.diagnostics).map_err(|error| error.to_string()),
+            CheckFormat::Sarif => {
+                render_sarif(&self.diagnostics).map_err(|error| error.to_string())
+            }
+            CheckFormat::Github => Ok(render_github(&self.diagnostics)),
         }
     }
 
-    fn print_errors(&self) {
+    fn print_errors(&self, github: bool) {
         for error in &self.policy.errors {
-            eprintln!("{}: {}", error.filename, error.message);
+            let message = format!("{}: {}", error.filename, error.message);
+            if github {
+                print_github_log(&message);
+            } else {
+                eprintln!("{message}");
+            }
         }
     }
 }
@@ -161,9 +193,33 @@ pub fn check(args: CheckArgs) -> Result<u8, String> {
         .as_ref()
         .map(|_| read_stdin())
         .transpose()?;
-    let evaluation = evaluate(&cwd, &args, replacement, false)?;
-    write_stdout(&evaluation.render(args.output_format)?)?;
-    evaluation.print_errors();
+    let mut evaluation = evaluate(&cwd, &args, replacement, false)?;
+    if args.fix && evaluation.policy.errors.is_empty() {
+        // Rebuild the snapshot before applying cross-file decisions.
+        let fresh = evaluate(&cwd, &args, None, false)?;
+        if !fresh.policy.errors.is_empty()
+            || fresh.sources != evaluation.sources
+            || fresh.diagnostics != evaluation.diagnostics
+        {
+            evaluation.error(
+                ".",
+                "Workspace inputs changed during the check; rerun before applying fixes.",
+            );
+        } else {
+            let errors = apply_safe_fixes(&fresh);
+            evaluation = evaluate(&cwd, &args, None, false)?;
+            evaluation.policy.errors.extend(errors);
+        }
+    }
+    write_stdout(&render_evaluation(
+        &evaluation,
+        args.output_format,
+        args.statistics,
+    )?)?;
+    if args.statistics && matches!(args.output_format, CheckFormat::Github) {
+        print_github_log(&statistics_text(&evaluation));
+    }
+    evaluation.print_errors(matches!(args.output_format, CheckFormat::Github));
     if evaluation.enabled_count == 0 && evaluation.policy.errors.is_empty() {
         eprintln!(
             "seiso: No rules enabled for the selected files. Inspect `seiso policy` for the effective selection and file kinds."
@@ -181,17 +237,232 @@ pub fn policy(args: PolicyArgs) -> Result<u8, String> {
         stdin_filename: None,
         exit_zero: false,
         no_cache: true,
+        fix: false,
+        statistics: false,
     };
     let evaluation = evaluate(&current_dir()?, &args, None, true)?;
     let mut output =
         serde_json::to_string_pretty(&evaluation.policy).map_err(|error| error.to_string())?;
     output.push('\n');
     write_stdout(&output)?;
-    evaluation.print_errors();
+    evaluation.print_errors(false);
     Ok(if evaluation.policy.errors.is_empty() {
         0
     } else {
         2
+    })
+}
+
+pub fn index(args: IndexArgs) -> Result<u8, String> {
+    let options = CheckArgs {
+        paths: Vec::new(),
+        config: args.config,
+        selection: SelectionArgs::default(),
+        output_format: CheckFormat::Json,
+        stdin_filename: None,
+        exit_zero: false,
+        no_cache: args.no_cache,
+        fix: false,
+        statistics: false,
+    };
+    let evaluation = evaluate(&current_dir()?, &options, None, true)?;
+    let index = evaluation
+        .index
+        .as_ref()
+        .ok_or("Workspace index was not built.")?;
+    let result = serde_json::json!({"index":index.dump(),"errors":evaluation.policy.errors});
+    write_stdout(&(serde_json::to_string_pretty(&result).map_err(|e| e.to_string())? + "\n"))?;
+    evaluation.print_errors(false);
+    Ok(if evaluation.policy.errors.is_empty() {
+        0
+    } else {
+        2
+    })
+}
+
+fn statistics(evaluation: &Evaluation) -> serde_json::Value {
+    let mut counts = BTreeMap::<&str, usize>::new();
+    for diagnostic in &evaluation.diagnostics {
+        *counts.entry(&diagnostic.code).or_default() += 1;
+    }
+    let suppressions: Vec<_> =
+        evaluation
+            .policy
+            .files
+            .iter()
+            .flat_map(|file| {
+                file.suppressions.as_array().into_iter().flatten().map(
+                    |record| serde_json::json!({"filename":file.filename,"declaration":record}),
+                )
+            })
+            .collect();
+    serde_json::json!({"rules":counts,"suppressions":suppressions})
+}
+
+fn statistics_text(evaluation: &Evaluation) -> String {
+    let stats = statistics(evaluation);
+    let mut text = String::from("Rule counts:\n");
+    for (code, count) in stats["rules"].as_object().into_iter().flatten() {
+        text.push_str(&format!("  {code}: {count}\n"));
+    }
+    text.push_str("Suppressions:\n");
+    for file in &evaluation.policy.files {
+        for record in file.suppressions.as_array().into_iter().flatten() {
+            let reason = record["reason"]
+                .as_str()
+                .unwrap_or("")
+                .replace(['\r', '\n'], " ");
+            text.push_str(&format!(
+                "  {}: {} -- {} ({})\n",
+                file.filename, record["codes"], reason, record["states"]
+            ));
+        }
+    }
+    text
+}
+
+fn print_github_log(text: &str) {
+    // The runner also parses stderr, including legacy commands embedded within
+    // a line. Prefix every line and break that legacy delimiter in log content.
+    for line in text.lines() {
+        eprintln!(
+            "seiso: {}",
+            line.replace('\r', "\\r").replace("##[", "## [")
+        );
+    }
+}
+
+fn render_evaluation(
+    evaluation: &Evaluation,
+    format: CheckFormat,
+    include_statistics: bool,
+) -> Result<String, String> {
+    if !include_statistics {
+        return evaluation.render(format);
+    }
+    match format {
+        CheckFormat::Json => serde_json::to_string_pretty(&serde_json::json!({"diagnostics":evaluation.diagnostics,"statistics":statistics(evaluation)}))
+            .map(|text|text+"\n").map_err(|error|error.to_string()),
+        CheckFormat::Sarif => {
+            let mut sarif: serde_json::Value = serde_json::from_str(&evaluation.render(format)?).map_err(|error|error.to_string())?;
+            sarif["runs"][0]["properties"] = serde_json::json!({"statistics":statistics(evaluation)});
+            serde_json::to_string_pretty(&sarif).map(|text|text+"\n").map_err(|error|error.to_string())
+        }
+        CheckFormat::Github => evaluation.render(format),
+        _ => Ok(evaluation.render(format)?+&statistics_text(evaluation)),
+    }
+}
+
+fn apply_safe_fixes(evaluation: &Evaluation) -> Vec<InputError> {
+    let mut errors = Vec::new();
+    let Some(index) = &evaluation.index else {
+        return errors;
+    };
+    for file in &index.files {
+        let diagnostics = evaluation
+            .diagnostics
+            .iter()
+            .filter(|diagnostic| diagnostic.filename == file.filename)
+            .cloned()
+            .collect::<Vec<_>>();
+        let outcome = (|| -> Result<(), String> {
+            let Some(updated) =
+                seiso_rules::fixes::apply_fixes(&file.document.source, &diagnostics)?
+            else {
+                return Ok(());
+            };
+            let metadata = fs::symlink_metadata(&file.path).map_err(|error| error.to_string())?;
+            if metadata.file_type().is_symlink()
+                || !metadata.is_file()
+                || metadata.permissions().readonly()
+            {
+                return Err("Cannot apply fixes to a symlink, non-file, or read-only file.".into());
+            }
+            let mut temporary = tempfile::NamedTempFile::new_in(
+                file.path.parent().ok_or("Missing parent directory.")?,
+            )
+            .map_err(|e| e.to_string())?;
+            temporary
+                .as_file()
+                .set_permissions(metadata.permissions())
+                .map_err(|e| e.to_string())?;
+            temporary
+                .write_all(updated.as_bytes())
+                .map_err(|e| e.to_string())?;
+            temporary.flush().map_err(|e| e.to_string())?;
+            if fs::read(&file.path).map_err(|e| e.to_string())? != file.document.source.as_bytes() {
+                return Err(
+                    "Source changed before the fix could be written; rerun the check.".into(),
+                );
+            }
+            temporary.persist(&file.path).map_err(|e| e.to_string())?;
+            Ok(())
+        })();
+        if let Err(message) = outcome {
+            errors.push(InputError {
+                filename: file.filename.clone(),
+                message,
+            });
+        }
+    }
+    errors
+}
+
+struct PendingDocument {
+    path: PathBuf,
+    filename: String,
+    config: seiso_config::Config,
+    configuration: String,
+    source_override: Option<String>,
+}
+
+type LoadedDocument = Result<(String, Arc<seiso_md::Document>), String>;
+
+fn load_documents(
+    inputs: &[PendingDocument],
+    cache: &seiso_cache::ParseCache,
+) -> Vec<LoadedDocument> {
+    let load = |input: &PendingDocument| {
+        let source = input
+            .source_override
+            .as_ref()
+            .map_or_else(
+                || fs::read_to_string(&input.path),
+                |source| Ok(source.clone()),
+            )
+            .map_err(|error| format!("Cannot read UTF-8 Markdown: {error}"))?;
+        let document = cache
+            .parse_shared(&source)
+            .map_err(|error| format!("Cannot parse Markdown: {error}"))?;
+        Ok((source, document))
+    };
+    let workers = std::thread::available_parallelism()
+        .map_or(1, |count| count.get())
+        .min(4);
+    if workers == 1 || inputs.len() < 32 {
+        return inputs.iter().map(load).collect();
+    }
+    std::thread::scope(|scope| {
+        let handles: Vec<_> = inputs
+            .chunks(inputs.len().div_ceil(workers))
+            .map(|batch| {
+                let load = &load;
+                (
+                    batch.len(),
+                    scope.spawn(move || batch.iter().map(load).collect::<Vec<_>>()),
+                )
+            })
+            .collect();
+        handles
+            .into_iter()
+            .flat_map(|(count, handle)| {
+                handle.join().unwrap_or_else(|_| {
+                    (0..count)
+                        .map(|_| Err("Markdown worker did not finish; rerun the check.".to_owned()))
+                        .collect()
+                })
+            })
+            .collect()
     })
 }
 
@@ -209,9 +480,8 @@ fn evaluate(
     let mut evaluation = Evaluation::default();
     let mut requested = BTreeSet::new();
     let mut inputs = BTreeMap::new();
-    if let Some(path) = &args.stdin_filename {
-        let path = absolute(cwd, path);
-        require_workspace_path(&root, &path)?;
+    let overlay = if let Some(path) = &args.stdin_filename {
+        let path = workspace_path(&root, &absolute(cwd, path))?;
         if !is_markdown(&path) {
             return Err("The stdin filename must have a .md or .markdown extension.".into());
         }
@@ -221,14 +491,15 @@ fn evaluate(
                 relative(&root, &path)
             ));
         }
-        inputs.insert(path, replacement);
+        requested.insert(path.clone());
+        Some(path)
     } else {
         for path in &args.paths {
             let path = absolute(cwd, path);
-            require_workspace_path(&root, &path)?;
+            let path = workspace_path(&root, &path)?;
             match path.try_exists() {
                 Ok(true) => {
-                    requested.insert(identity(&path));
+                    requested.insert(path);
                 }
                 Ok(false) => evaluation.error(
                     relative(&root, &path),
@@ -240,52 +511,59 @@ fn evaluate(
                 ),
             }
         }
-        let walker = ignore::WalkBuilder::new(&root)
-            .hidden(false)
-            .follow_links(false)
-            .git_ignore(true)
-            .git_global(false)
-            .git_exclude(false)
-            .ignore(false)
-            .parents(false)
-            .require_git(false)
-            .filter_entry(|entry| entry.file_name() != ".git")
-            .build();
-        for entry in walker {
-            match entry {
-                Ok(entry) => {
-                    let path = normalize(entry.path());
-                    if let Some(error) = entry.error() {
-                        evaluation.error(
-                            relative(&root, &path),
-                            format!("Cannot fully apply ignore rules: {error}"),
-                        );
-                    }
-                    if !entry.file_type().is_some_and(|kind| kind.is_file()) || !is_markdown(&path)
-                    {
-                        continue;
-                    }
-                    if !args.paths.is_empty()
-                        && !requested
-                            .iter()
-                            .any(|selected| identity(&path).starts_with(selected))
-                    {
-                        continue;
-                    }
-                    inputs.insert(path, None);
+        None
+    };
+    let walker = ignore::WalkBuilder::new(&root)
+        .hidden(false)
+        .follow_links(false)
+        .git_ignore(true)
+        .git_global(false)
+        .git_exclude(false)
+        .ignore(false)
+        .parents(false)
+        .require_git(false)
+        .filter_entry(|entry| entry.file_name() != ".git" && entry.file_name() != ".seiso_cache")
+        .build();
+    for entry in walker {
+        match entry {
+            Ok(entry) => {
+                let path = normalize(entry.path());
+                if let Some(error) = entry.error() {
+                    evaluation.error(
+                        relative(&root, &path),
+                        format!("Cannot fully apply ignore rules: {error}"),
+                    );
                 }
-                Err(error) => {
-                    evaluation.error(".", format!("Cannot finish workspace discovery: {error}"))
+                if !entry.file_type().is_some_and(|kind| kind.is_file()) || !is_markdown(&path) {
+                    continue;
                 }
+                inputs.insert(path, None);
+            }
+            Err(error) => {
+                evaluation.error(".", format!("Cannot finish workspace discovery: {error}"))
             }
         }
     }
+    if let Some(path) = overlay {
+        inputs.insert(path, replacement);
+    }
     // Include the workspace configuration even when no Markdown file is selected.
     record_configuration(&mut evaluation, &root, &workspace.config, &overrides);
+    let cache = seiso_cache::ParseCache::new(root.join(".seiso_cache"), !args.no_cache);
+    let mut indexed = Vec::new();
+    let mut configurations = BTreeMap::new();
+    let mut selected_files = BTreeSet::new();
+    let mut pending = Vec::new();
     for (path, source_override) in inputs {
         let filename = relative(&root, &path);
-        let config = match workspace.config_for(&path) {
-            Ok(config) => config,
+        let directory = path.parent().unwrap_or(&root).to_path_buf();
+        let resolved = configurations.entry(directory).or_insert_with(|| {
+            workspace
+                .config_for(&path)
+                .map_err(|error| error.to_string())
+        });
+        let config = match resolved {
+            Ok(config) => config.clone(),
             Err(error) => {
                 evaluation.error(filename, error.to_string());
                 continue;
@@ -316,52 +594,150 @@ fn evaluate(
             }
             continue;
         }
-        let source = match source_override.map_or_else(|| fs::read_to_string(&path), Ok) {
-            Ok(source) => source,
-            Err(error) => {
-                evaluation.error(filename, format!("Cannot read UTF-8 Markdown: {error}"));
-                continue;
-            }
-        };
-        let document = match seiso_md::parse(&source) {
-            Ok(document) => document,
-            Err(error) => {
-                evaluation.error(filename, format!("Cannot parse Markdown: {error}"));
-                continue;
-            }
-        };
-        let context = seiso_rules::CheckContext {
-            document: &document,
-            filename: &filename,
-            path: &path,
-            workspace_root: &root,
-            config: &config,
-            overrides: &overrides,
-        };
-        let result = match seiso_rules::check(&context) {
-            Ok(result) => result,
-            Err(error) => {
-                evaluation.error(filename, error.to_string());
-                continue;
-            }
-        };
-        for error in result.errors {
-            evaluation.error(&filename, error);
-        }
-        evaluation.enabled_count += result.enabled_rules.len();
-        evaluation.diagnostics.extend(result.diagnostics);
-        evaluation.sources.insert(filename.clone(), source);
-        evaluation.policy.files.push(FilePolicy {
+        pending.push(PendingDocument {
+            path,
             filename,
+            config,
             configuration,
-            kind: Some(result.kind),
-            domain: config.domain_for(&path).map(str::to_owned),
-            enabled_rules: result.enabled_rules,
-            excluded: None,
-            suppressions: serde_json::to_value(result.suppressions)
-                .map_err(|error| error.to_string())?,
+            source_override,
         });
     }
+    let loaded = load_documents(&pending, &cache);
+    for (input, loaded) in pending.into_iter().zip(loaded) {
+        let PendingDocument {
+            path,
+            filename,
+            config,
+            configuration,
+            ..
+        } = input;
+        let (source, document) = match loaded {
+            Ok(loaded) => loaded,
+            Err(error) => {
+                evaluation.error(filename, error);
+                continue;
+            }
+        };
+        let kind = seiso_rules::resolve_kind(&document, config.kind_for(&path));
+        let enabled_rules = config
+            .enabled_rules(&path, kind.value.as_deref(), &overrides)
+            .map_err(|error| error.to_string())?
+            .into_iter()
+            .filter(|code| seiso_rules::IMPLEMENTED_RULES.contains(code))
+            .map(str::to_owned)
+            .collect::<Vec<_>>();
+        if (args.paths.is_empty() && args.stdin_filename.is_none())
+            || requested.iter().any(|selected| path.starts_with(selected))
+        {
+            selected_files.insert(filename.clone());
+            evaluation.enabled_count += enabled_rules.len();
+        }
+        evaluation.sources.insert(filename.clone(), source);
+        evaluation.policy.files.push(FilePolicy {
+            filename: filename.clone(),
+            configuration,
+            kind: Some(kind.clone()),
+            domain: config.domain_for(&path).map(str::to_owned),
+            enabled_rules: enabled_rules.clone(),
+            excluded: None,
+            suppressions: serde_json::json!([]),
+        });
+        indexed.push(IndexedFile {
+            filename,
+            path: path.clone(),
+            document,
+            kind: kind.value,
+            domain: config.domain_for(&path).unwrap_or("").to_owned(),
+            enabled_rules,
+            config,
+        });
+    }
+    let index = WorkspaceIndex::new(root.clone(), indexed, evaluation.policy.errors.is_empty());
+    let mut cross = seiso_rules::cross_file::check(&index);
+    for (filename, error) in &cross.errors {
+        evaluation.error(filename, error);
+    }
+    let mut cross_by_file = BTreeMap::<String, Vec<Diagnostic>>::new();
+    for diagnostic in cross.diagnostics {
+        cross_by_file
+            .entry(diagnostic.filename.clone())
+            .or_default()
+            .push(diagnostic);
+    }
+    for file in &index.files {
+        let selected = selected_files.contains(&file.filename);
+        let mut raw = if selected {
+            seiso_rules::check_raw(&seiso_rules::CheckContext {
+                document: &file.document,
+                filename: &file.filename,
+                path: &file.path,
+                workspace_root: &root,
+                config: &file.config,
+                overrides: &overrides,
+            })
+            .map_err(|error| error.to_string())?
+        } else {
+            seiso_rules::RawCheckResult {
+                kind: seiso_rules::resolve_kind(&file.document, file.config.kind_for(&file.path)),
+                enabled_rules: BTreeSet::new(),
+                diagnostics: Vec::new(),
+                errors: Vec::new(),
+                incomplete_rules: seiso_rules::SINGLE_FILE_RULES
+                    .iter()
+                    .map(|code| (*code).to_owned())
+                    .collect(),
+            }
+        };
+        raw.enabled_rules = file.enabled_rules.iter().cloned().collect();
+        raw.diagnostics
+            .extend(cross_by_file.remove(&file.filename).unwrap_or_default());
+        raw.incomplete_rules
+            .extend(cross.incomplete.remove(&file.filename).unwrap_or_default());
+        if !index.complete {
+            raw.incomplete_rules.extend(
+                seiso_rules::CROSS_FILE_RULES
+                    .iter()
+                    .map(|code| (*code).to_owned()),
+            );
+        }
+        let result = seiso_rules::finish_check(&file.document, &file.filename, raw);
+        for error in result.errors {
+            evaluation.error(&file.filename, error);
+        }
+        evaluation
+            .diagnostics
+            .extend(result.diagnostics.into_iter().filter(|diagnostic| {
+                selected_files.contains(&diagnostic.filename)
+                    || (seiso_rules::CROSS_FILE_RULES.contains(&diagnostic.code.as_str())
+                        && diagnostic.related.iter().any(|related| {
+                            selected_files.contains(&related.filename)
+                                || (diagnostic.code == "PTR002"
+                                    && requested.iter().any(|selected| {
+                                        root.join(&related.filename).starts_with(selected)
+                                    }))
+                        }))
+            }));
+        if let Some(policy) = evaluation
+            .policy
+            .files
+            .iter_mut()
+            .find(|policy| policy.filename == file.filename)
+        {
+            policy.suppressions =
+                serde_json::to_value(result.suppressions).map_err(|error| error.to_string())?;
+        }
+    }
+    evaluation.diagnostics = seiso_diagnostics::sorted_diagnostics(&evaluation.diagnostics);
+    if !policy_mode {
+        evaluation.policy.files.retain(|file| {
+            selected_files.contains(&file.filename)
+                || evaluation
+                    .diagnostics
+                    .iter()
+                    .any(|diagnostic| diagnostic.filename == file.filename)
+        });
+    }
+    evaluation.index = Some(index);
     evaluation
         .policy
         .files
@@ -534,7 +910,9 @@ fn run_hook(command: HookCommand) -> Result<u8, String> {
         output_format: CheckFormat::Concise,
         stdin_filename: None,
         exit_zero: false,
-        no_cache: true,
+        no_cache: false,
+        fix: false,
+        statistics: false,
     };
     let evaluation = evaluate(&cwd, &args, None, false)?;
     match evaluation.exit_code(false) {
@@ -551,7 +929,7 @@ fn run_hook(command: HookCommand) -> Result<u8, String> {
                 .lock()
                 .write_all(evaluation.render(CheckFormat::Concise)?.as_bytes())
                 .map_err(|error| format!("Cannot write hook diagnostics: {error}"))?;
-            evaluation.print_errors();
+            evaluation.print_errors(false);
             Ok(1)
         }
     }

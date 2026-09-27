@@ -1,0 +1,87 @@
+{
+  "annotation_status": "unlabeled; diagnostic counts are not precision measurements",
+  "corpus_sha256": "3904c6c396606d13a21de7296624bfff99054f60d872cb4da6a346ddb80487cb",
+  "counts": {
+    "holdout": {
+      "KND001": 527,
+      "LNK001": 1191,
+      "LNK002": 105,
+      "OWN002": 83,
+      "PTR001": 5,
+      "PTR002": 1,
+      "STL001": 7
+    },
+    "tuning": {
+      "KND001": 1207,
+      "LNK001": 971,
+      "LNK002": 375,
+      "PTR002": 7,
+      "STL001": 1
+    }
+  },
+  "diagnostics": 4480,
+  "files": 1953,
+  "implementation": {
+    "Cargo.lock": "d9927de4f40371574c03e90fd4b10235d76e3ffc735233442aa8fd97dc1e91bb",
+    "Cargo.toml": "5fe2e446ac7d6a78678951f5602171f6e1961947ae0b3371dac9c1f6f4cb85b6",
+    "crates/seiso_config/Cargo.toml": "21d77cc576f2439f3327cde437846d7bbbcde0adfc19030d30d98711c05741b7",
+    "crates/seiso_config/src/lib.rs": "67c282a4aaf60b5237c60e05a6a2c5a36fe36707d978291a199020e968697d54",
+    "crates/seiso_diagnostics/Cargo.toml": "2009504e9f83507047c1f8f23cc41884df9309296cea266596afd91e5371171b",
+    "crates/seiso_diagnostics/src/lib.rs": "740286581f6093acb6dad4bed9b5568c40fba54b5bd4dce93995028cdd07dd55",
+    "crates/seiso_diagnostics/src/outputs.rs": "505eeeaf785186d09e9f0926408501c2f2b8402bfa5be6cddae8c30bb19b5025",
+    "crates/seiso_diagnostics/src/render.rs": "b174ab6a72dd917c3a73547261b4c46aa43edaec80b8d9f443ec8ed63dff3077",
+    "crates/seiso_diagnostics/src/source_map.rs": "b9b5a3afcf2c5fc3640925734b09caa931b17069651e5cc5797208daace81ba3",
+    "crates/seiso_index/Cargo.toml": "7e1437f33b4c066b958a36326fa5b43c7bf358bd3d32a3143971671a793eaba7",
+    "crates/seiso_index/src/lib.rs": "03ae850ebb502d12d720970931ffaa7c9a9469f23200b96952efa0ecca6e1aa1",
+    "crates/seiso_md/Cargo.toml": "f3ee402218976360d0f160859df8a7ebda53fad3fdea608f7f4970a488a59bc2",
+    "crates/seiso_md/src/lib.rs": "65fb26d08a1d36c8461b1431683f1b0fc73ab315b6e70bb017e16282efdff805",
+    "crates/seiso_md/src/mapping.rs": "8d2029582e39efdbcb094de46bd835a663db76e350ec023f39c2307d224e29df",
+    "crates/seiso_md/src/parser.rs": "d054c0c26e409d3b1e0ba452e25cb34463702ad2efe880b69e2edadc80787e39",
+    "crates/seiso_rules/Cargo.toml": "351f58ce67146f2461e6547843bb78780c2fb6a30b516905d6f3f7810ac0f77c",
+    "crates/seiso_rules/examples/evaluate_m2.rs": "076ac2a48f6036c9e275b7780a90a08f9dd23a9f20f0b84e51aafcd42b4fe6f8",
+    "crates/seiso_rules/src/cross_file.rs": "56de242883c5f45918f620852d07ad4251dc2262366534b7c3a9db5ec861c1ed",
+    "crates/seiso_rules/src/fixes.rs": "9f6b521c84b03a2d63ebbbc5e176f0b5fc33d5d3b62c294cedcfddc1f6324f7d",
+    "crates/seiso_rules/src/lib.rs": "08a07bd4d4458165ae6fece6c329f8c042a37e9bd466ef1c50c532d6dfd1ce10",
+    "crates/seiso_rules/src/links.rs": "c923e52e73bba7489985d552bf3c610bc9d9ffc84c2dcf0b8c08399f0a9b5eda",
+    "crates/seiso_rules/src/normative.rs": "77510f4921f2b506af7a88052d2089870d198516d97f8d9d9c3559df7e2e211e",
+    "crates/seiso_rules/src/suppression.rs": "1b4c20e1feadd8d5589d0006b24d8501c20d45d1b9c4dcc0d6ac024dfaf1d18c",
+    "scripts/evaluate_m2.py": "9593c605fc2e0325a82e77fa8b3d2d6c4e7b6b065f9a5f5155950e571611e99f"
+  },
+  "incomplete_rule_files": {
+    "LNK001": 2,
+    "LNK002": 10
+  },
+  "inventory_sha256": "8bb0be885bced01d9648b7eead154e349c477e19005d7ef5967f070cd3d9eba0",
+  "kind_profile_sha256": "7dee2a2ad65f77f5081da74046fec07e1e52ff5bb4110e96b53b8f2c541d7922",
+  "link_backend": "case-sensitive pinned Git trees; symlinks and submodules undetermined; anchors only in pinned corpus documents",
+  "m2_counts": {
+    "holdout": {
+      "DUP001": 0,
+      "DUP002": 0,
+      "DUP003": 0,
+      "LNK002": 105,
+      "OWN001": 0,
+      "OWN002": 83,
+      "PTR002": 1
+    },
+    "tuning": {
+      "DUP001": 0,
+      "DUP002": 0,
+      "DUP003": 0,
+      "LNK002": 375,
+      "OWN001": 0,
+      "OWN002": 0,
+      "PTR002": 7
+    }
+  },
+  "probe_sha256": "be68c44ebeb9d799572f30e5e8faaba9271a93e215f85de0bf261dd9d3b4ef9f",
+  "raw_result_sha256": "29235211d5c66b2af30055aa70a1331eac2f4d4acc8da2655249a507ca266164",
+  "report_sha256": "fa5360cfe8f476fc7a9e47b0dc254d890a5e206f99a5395f14750f0fcd1ed4d3",
+  "reverse_byte_identical": true,
+  "reverse_dimensions": [
+    "sources",
+    "documents",
+    "tree_entries"
+  ],
+  "schema_version": 1
+}

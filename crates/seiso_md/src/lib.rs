@@ -139,8 +139,9 @@ pub struct Fragment {
     pub text: String,
     /// Original syntax producing this fragment, including inline delimiters.
     pub span: Span,
-    /// Decoded text byte ranges mapped to original source. Do not add a decoded
-    /// text offset to `span.start`: escapes and character references change lengths.
+    /// Decoded text byte ranges mapped to original source. Exact equal-length
+    /// segments map linearly; other segments cover their complete syntax range.
+    /// Use `source_span` rather than adding a decoded offset to `span.start`.
     pub mapping: Vec<SourceSegment>,
 }
 
@@ -153,6 +154,27 @@ pub struct SourceSegment {
     pub exact: bool,
 }
 
+impl SourceSegment {
+    fn covered_source(&self, text: &str, range: Span) -> Span {
+        if !self.exact || self.text.end - self.text.start != self.source.end - self.source.start {
+            return self.source;
+        }
+        let mut start = self.text.start.max(range.start);
+        let mut end = self.text.end.min(range.end);
+        // A byte range inside a UTF-8 character still refers to that whole character.
+        while !text.is_char_boundary(start) {
+            start -= 1;
+        }
+        while !text.is_char_boundary(end) {
+            end += 1;
+        }
+        Span::new(
+            self.source.start + start - self.text.start,
+            self.source.start + end - self.text.start,
+        )
+    }
+}
+
 impl Fragment {
     /// Smallest mapped source range covering the requested decoded text bytes.
     pub fn source_span(&self, range: Span) -> Option<Span> {
@@ -162,11 +184,12 @@ impl Fragment {
         let mut matches = self
             .mapping
             .iter()
-            .filter(|segment| segment.text.start < range.end && range.start < segment.text.end);
+            .filter(|segment| segment.text.start < range.end && range.start < segment.text.end)
+            .map(|segment| segment.covered_source(&self.text, range));
         let first = matches.next()?;
-        Some(matches.fold(first.source, |span, segment| Span {
-            start: span.start.min(segment.source.start),
-            end: span.end.max(segment.source.end),
+        Some(matches.fold(first, |span, segment| Span {
+            start: span.start.min(segment.start),
+            end: span.end.max(segment.end),
         }))
     }
 }

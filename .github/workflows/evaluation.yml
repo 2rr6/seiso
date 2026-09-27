@@ -1,0 +1,103 @@
+name: Evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseline_ref:
+        description: Optional Git ref for diagnostic and performance comparison
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evaluation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BASELINE_REF: ${{ inputs.baseline_ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: current
+          persist-credentials: false
+      - if: inputs.baseline_ref != ''
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.baseline_ref }}
+          path: baseline
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: current -> target
+      - if: inputs.baseline_ref != ''
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: baseline -> target
+      - uses: actions/cache@v4
+        with:
+          path: current/corpus/data/blobs
+          key: corpus-${{ hashFiles('current/corpus/corpus.lock.json') }}
+      - name: Verify pinned inputs
+        working-directory: current
+        run: |
+          python corpus/corpus.py fetch
+          python corpus/corpus.py verify
+          python corpus/inventory.py verify
+      - name: Evaluate corpus
+        run: python current/scripts/evaluate_m2.py --output "$RUNNER_TEMP/evaluation/current"
+      - name: Compare diagnostics
+        shell: bash
+        run: |
+          if test -n "$BASELINE_REF"; then
+            if test -f baseline/scripts/evaluate_m2.py; then
+              python baseline/scripts/evaluate_m2.py --corpus-dir "$GITHUB_WORKSPACE/current/corpus" --output "$RUNNER_TEMP/evaluation/baseline"
+              baseline_report="$RUNNER_TEMP/evaluation/baseline/diagnostics.json.gz"
+            else
+              baseline_report="$GITHUB_WORKSPACE/baseline/corpus/results/m1/promoted-v1/diagnostics.json.gz"
+              printf '%s\n' 'Baseline uses the accepted M1 report; that revision has no cross-file evaluator.' >> "$GITHUB_STEP_SUMMARY"
+            fi
+          elif test -f current/corpus/results/m2/natural-v1/diagnostics.json.gz; then
+            baseline_report="$GITHUB_WORKSPACE/current/corpus/results/m2/natural-v1/diagnostics.json.gz"
+            printf '%s\n' 'Diagnostic baseline: the recorded M2 corpus run.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            baseline_report="$GITHUB_WORKSPACE/current/corpus/results/m1/promoted-v1/diagnostics.json.gz"
+            printf '%s\n' 'Diagnostic baseline: the recorded M1 corpus run.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          python current/scripts/ecosystem_diff.py "$baseline_report" "$RUNNER_TEMP/evaluation/current/diagnostics.json.gz" --output "$RUNNER_TEMP/evaluation/diff"
+          cat "$RUNNER_TEMP/evaluation/diff/changes.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Build release binaries
+        shell: bash
+        run: |
+          cargo build --manifest-path current/Cargo.toml --release --locked -p seiso
+          if test -n "$BASELINE_REF"; then
+            cargo build --manifest-path baseline/Cargo.toml --release --locked -p seiso
+          fi
+      - name: Measure performance
+        shell: bash
+        run: |
+          options=()
+          if test -n "$BASELINE_REF"; then
+            options+=(--baseline-binary baseline/target/release/seiso)
+          fi
+          python current/scripts/benchmark_m2.py \
+            --binary current/target/release/seiso \
+            --workdir "$RUNNER_TEMP" \
+            --output "$RUNNER_TEMP/evaluation/performance.json" \
+            --enforce-targets "${options[@]}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evaluation
+          path: ${{ runner.temp }}/evaluation/
+          if-no-files-found: ignore
