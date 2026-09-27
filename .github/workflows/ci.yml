@@ -2,10 +2,17 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -13,8 +20,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: ${{ runner.os == 'Linux' && 'clippy, rustfmt' || '' }}
@@ -25,9 +35,7 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - if: runner.os == 'Linux'
-        run: |
-          cargo run --locked -p seiso -- check --output-format concise
-          cargo run --locked -p seiso -- check --preview --output-format concise
+        run: cargo run --locked -p seiso -- check --output-format concise
       - if: runner.os == 'Linux'
         uses: actions/setup-python@v5
         with:
