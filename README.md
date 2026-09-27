@@ -33,8 +33,8 @@ seiso checks documents against this convention. Each diagnostic says where
 the problem is and how to fix it, so an agent can repair the page from
 seiso's output alone. seiso doesn't guess whether prose sounds
 machine-written, and it leaves formatting and spelling to other tools. The
-[design](https://github.com/scarletkc/seiso/blob/main/docs/seiso%20设计与实施方案.md)
-(in Chinese) defines each kind's contract and the rules that check it.
+[convention](https://github.com/scarletkc/seiso/blob/main/docs/convention.md)
+defines each kind's contract and the evidence a diagnostic can claim.
 
 ## Try it
 
@@ -51,5 +51,10 @@ for configuration and output, [integrations](https://github.com/scarletkc/seiso/
 for editor hooks and pre-commit, and [development](https://github.com/scarletkc/seiso/blob/main/docs/development.md)
 for validation commands. `seiso parse` inspects the document model without
 running rules.
+
+The [architecture](https://github.com/scarletkc/seiso/blob/main/docs/architecture.md)
+describes command execution; the
+[roadmap](https://github.com/scarletkc/seiso/blob/main/docs/roadmap.md)
+contains proposed features and links to milestone evidence.
 
 Licensed under [MIT](https://github.com/scarletkc/seiso/blob/main/LICENSE).

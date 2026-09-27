@@ -17,7 +17,7 @@ documents that need a different role. Use `seiso rule KND001` for an example.
 Stable rules are enabled by default. Add `--preview` or `preview = true` in the
 configuration to opt into selected preview rules. `seiso rule <CODE>` shows a
 rule's status; `seiso policy` shows the rules enabled for each file. The
-[development guide](development.md) records the evaluation gates.
+[evaluation policy](evaluation-policy.md) records the promotion criteria.
 
 ## Select files and rules
 
@@ -32,14 +32,19 @@ Paths are relative to the calling directory. Reported filenames are relative to
 the workspace root. Explicit paths still respect `.gitignore`, `include`, and
 `exclude`; the nearest configuration determines each file's policy.
 
-Every check reads the included workspace documents. Single-file rules run on
-the selected files; cross-file rules use the full index and report a diagnosis
-when its primary or related location is selected. Checking a renamed heading's
-file can therefore report a broken anchor in a document that links to it.
+With only single-file rules enabled, a path check reads the selected sources.
+When an included file's policy can enable a cross-file rule, checking loads the
+included workspace documents and reports a diagnosis when its primary or
+related location is selected. Checking a renamed heading's file can therefore
+report a broken anchor in a document that links to it. Unrelated unreadable
+documents do not block a check that does not need their content.
 
 Use `seiso check --help` for command options and `seiso rule --all` for the
 implemented rules, their examples, and exceptions. `--select` replaces the
 configured selection; `--extend-select` adds to it.
+Only implemented families and rule codes are accepted. The
+[configuration reference](configuration.md) defines inheritance, precedence,
+kind mappings, domains, and rule selection.
 
 ## Check unsaved content
 
@@ -62,6 +67,7 @@ seiso check --output-format sarif > seiso.sarif
 seiso check --output-format github
 seiso check --statistics
 seiso policy > policy.json
+seiso policy --evaluate > evaluated-policy.json
 seiso index --dump > index.json
 ```
 
@@ -70,6 +76,11 @@ suggestion on one line. JSON is a sorted array of diagnostics; tool errors go to
 stderr. Policy JSON includes effective settings, kind resolution, enabled rules,
 configuration exclusions, and suppression records. The index dump includes
 effective kind, language, domain, anchors, and outgoing links.
+
+`policy` inspects declarations without running rules: valid enabled suppression
+codes are `not_evaluated`; invalid or disabled codes retain their states. Add
+`--evaluate` to determine actual active, stale, and incomplete outcomes.
+`index --dump` builds the index without running checks.
 
 SARIF includes primary and related locations and available safe fixes. GitHub
 output uses workflow annotations. With `--statistics`, JSON becomes an object
@@ -108,12 +119,14 @@ The safe fixer removes confirmed unused suppression codes and checks the
 result again. It preserves codes that are active, disabled, invalid, or
 undetermined, including preview rules that were not enabled. A partially
 stale declaration keeps its remaining codes and reason. No fixes are applied
-after an incomplete check, and stdin checks cannot use `--fix`.
+after an incomplete check, and stdin checks cannot use `--fix`. With no safe
+edits, it returns the initial result. A real edit plan is revalidated against
+fresh inputs before writing; changed sources prevent the planned write.
 
 ## Inspect cached results
 
 Checks store content-derived parse data in `.seiso_cache/`. Each run reads and
-hashes the sources, then resolves path policy and links against the current
+hashes its required sources, then resolves path policy and links against the current
 workspace. Moving a file, editing configuration, or deleting a link target
 takes effect even when source content was cached.
 

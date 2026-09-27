@@ -1,12 +1,12 @@
+---
+kind: howto
+---
+
 # Development
 
-The root Cargo package contains the library in [src/lib.rs](../src/lib.rs) and
-the CLI in [src/main.rs](../src/main.rs). The `md` module owns content-derived
-document data, `config` owns configuration and path policy, `diagnostics` owns
-source locations and diagnostic rendering, `rules` owns rule execution and
-suppression state, `index` owns current workspace facts and anchor resolution,
-and `cache` owns the content-addressed parse cache. CLI commands join these
-modules in [src/commands.rs](../src/commands.rs).
+The [architecture reference](architecture.md) maps module responsibilities and
+command execution. Use this guide to build, test, inspect parser behavior, and
+run performance or ecosystem comparisons.
 
 ## Build and validate
 
@@ -78,19 +78,11 @@ in [document tests](../tests/document.rs) records this boundary.
 
 ## Milestone acceptance
 
-The [M0 acceptance record](evaluation/m0-2026-09-27.md) records the pinned
-real-document corpus run and its evidence. Use the [corpus procedure](corpus.md)
-to repeat it against parser changes. Rule precision and performance are
-evaluated separately under the implementation plan's later gates. See
-[publishing](publishing.md) for the packaging and release procedure.
-
-The [M1 acceptance record](evaluation/m1-2026-09-28.md) records the rule-level
-decisions, natural precision results, and accepted protocol exceptions.
-Default checks use stable rules; normative rules remain opt-in until their
-own evidence permits promotion. The [M2 verification procedure](../corpus/docs/evaluation.md#cross-file-evaluation)
-covers full-workspace rules and their natural diagnostic evidence.
-The [M2 evaluation record](evaluation/m2-2026-09-28.md) records regression
-coverage, preview precision, and performance acceptance status.
+The [evaluation policy](evaluation-policy.md) defines promotion and acceptance
+requirements. Use the [corpus procedure](corpus.md) for parser evaluation and
+the [rule evaluation procedure](../corpus/docs/evaluation.md) for fresh rule
+evidence or historical replay. The [milestone index](roadmap.md#milestone-evidence)
+links to dated results. See [publishing](publishing.md) for distribution validation.
 
 ## Performance and ecosystem checks
 

@@ -32,9 +32,9 @@ The adapter reads the event's `cwd` and `tool_input.file_path`. It checks the
 saved Markdown file and sends concise diagnostics to stderr. Non-Markdown
 paths return success without output.
 
-The workspace index also allows feedback from documents that refer to the
-edited file. Parse caching is shared with ordinary checks; each invocation
-still reads source content and resolves current path policy.
+When cross-file rules are enabled, the workspace index also allows feedback
+from documents that refer to the edited file. Parse caching and
+[input scope](checking.md#select-files-and-rules) are shared with ordinary checks.
 
 Violations return hook exit code `2`, which sends feedback to Claude. Tool errors
 and incomplete checks return `1` for non-blocking error reporting. A successful
@@ -74,6 +74,8 @@ Use the [exit codes](checking.md#consume-results) as the gate. To review changes
 to exclusions, kind mappings, rule selection, and suppression reasons, save
 `seiso policy` from both revisions and compare the JSON. Review policy
 changes alongside document edits.
+Use `seiso policy --evaluate` when the review also needs current suppression
+outcomes; ordinary policy inspection leaves enabled codes unevaluated.
 
 For GitHub Actions annotations, use `seiso check --output-format github`.
 For tools that consume SARIF, save `seiso check --output-format sarif` to a
