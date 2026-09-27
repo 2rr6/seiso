@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "description": "A Markdown convention and linter for project docs written by AI and read by humans and agents",
   "license": "MIT",
+  "author": "scarletkc",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/scarletkc/seiso.git",
@@ -22,5 +23,5 @@
   "scripts": {
     "prepack": "node scripts/verify.cjs"
   },
-  "keywords": ["markdown", "documentation", "linter"]
+  "keywords": ["markdown", "documentation", "linter", "markdown-linter", "docs-as-code", "ai-agents", "cli"]
 }

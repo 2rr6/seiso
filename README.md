@@ -1,7 +1,18 @@
+<div align="center">
+
+<img src="https://github.com/scarletkc/seiso/raw/main/assets/logo.svg" alt="seiso logo" width="128" />
+
 # seiso
 
-A Markdown convention and linter for project docs written by AI and read by
-humans and agents.
+**A Markdown convention and linter for project docs written by AI and read by humans and agents.**
+
+[![CI](https://img.shields.io/github/actions/workflow/status/scarletkc/seiso/ci.yml?branch=main&label=CI&logo=githubactions&logoColor=white)](https://github.com/scarletkc/seiso/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/seiso?logo=rust&label=crates.io)](https://crates.io/crates/seiso)
+[![PyPI](https://img.shields.io/pypi/v/seiso?logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/seiso/)
+[![npm](https://img.shields.io/npm/v/%40scarletkc%2Fseiso?logo=npm&label=npm)](https://www.npmjs.com/package/@scarletkc/seiso)
+[![License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/scarletkc/seiso/blob/main/LICENSE)
+
+</div>
 
 Hardly anyone writes project docs by hand anymore. AI writes most of them,
 and coding agents read them as context as often as people do. Both kinds of
@@ -36,27 +47,42 @@ machine-written, and it leaves formatting and spelling to other tools. The
 [convention](https://github.com/scarletkc/seiso/blob/main/docs/reference/convention.md)
 defines each kind's contract and the evidence a diagnostic can claim.
 
-## Try it
-
-Run the linter from a source checkout:
+## Install
 
 ```sh
-cargo run -p seiso -- check README.md
-cargo run -p seiso -- rule KND001
+cargo install seiso
+uv tool install seiso    # or: pipx install seiso
+npm install -g @scarletkc/seiso
 ```
 
-Default checks use accepted stable rules; `--preview` adds selected preview
-rules. See [checking documents](https://github.com/scarletkc/seiso/blob/main/docs/guides/checking.md)
-for configuration and output, [integrations](https://github.com/scarletkc/seiso/blob/main/docs/guides/integrations.md)
-for editor hooks and pre-commit, and [development](https://github.com/scarletkc/seiso/blob/main/docs/guides/development.md)
-for validation commands. `seiso parse` inspects the document model without
-running rules.
+The PyPI and npm packages include prebuilt binaries for Linux x64 and Windows
+x64. Other platforms build from source, which requires a Rust toolchain. From a
+source checkout, run `cargo run -p seiso -- <command>`.
 
-The [architecture](https://github.com/scarletkc/seiso/blob/main/docs/reference/architecture.md)
-describes command execution; the
-[roadmap](https://github.com/scarletkc/seiso/blob/main/docs/design/roadmap.md)
-contains proposed features and links to milestone evidence.
-The [documentation index](https://github.com/scarletkc/seiso/blob/main/docs/README.md)
-organizes the guides, references, and evaluation records.
+## Quick start
 
-Licensed under [MIT](https://github.com/scarletkc/seiso/blob/main/LICENSE).
+From the repository root:
+
+```sh
+seiso init
+seiso check
+```
+
+`seiso init` writes a `seiso.toml` with suggested kind mappings; review them
+before relying on the results. Default checks use accepted stable rules;
+`--preview` adds selected preview rules. `seiso rule <CODE>` explains a rule
+with examples, and `seiso parse` inspects the document model without running
+rules.
+
+## Documentation
+
+- [Checking documents](https://github.com/scarletkc/seiso/blob/main/docs/guides/checking.md): configuration, rule selection, and output formats
+- [Integrations](https://github.com/scarletkc/seiso/blob/main/docs/guides/integrations.md): Claude Code hooks, pre-commit, and CI
+- [Development](https://github.com/scarletkc/seiso/blob/main/docs/guides/development.md): building, testing, and validation commands
+- [Architecture](https://github.com/scarletkc/seiso/blob/main/docs/reference/architecture.md): command execution
+- [Roadmap](https://github.com/scarletkc/seiso/blob/main/docs/design/roadmap.md): proposed features and milestone evidence
+- [Documentation index](https://github.com/scarletkc/seiso/blob/main/docs/README.md): guides, references, and evaluation records
+
+## License
+
+seiso is licensed under [MIT](https://github.com/scarletkc/seiso/blob/main/LICENSE).
