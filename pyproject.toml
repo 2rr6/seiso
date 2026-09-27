@@ -25,3 +25,4 @@ Issues = "https://github.com/scarletkc/seiso/issues"
 bindings = "bin"
 manifest-path = "crates/seiso_cli/Cargo.toml"
 strip = true
+include = [{ path = "LICENSE", format = "sdist" }]

@@ -49,6 +49,7 @@ jobs:
           maturin-version: '1.15.0'
           command: sdist
           args: --out dist
+      - run: python scripts/verify_distributions.py dist
       - uses: actions/upload-artifact@v4
         with:
           name: distributions-${{ runner.os }}
@@ -99,3 +100,5 @@ jobs:
           merge-multiple: true
           path: dist
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true

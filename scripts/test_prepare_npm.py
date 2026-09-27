@@ -1,11 +1,14 @@
 import hashlib
+import io
 import json
 from pathlib import Path
+import tarfile
 import tempfile
 import unittest
 import zipfile
 
 from prepare_npm import prepare
+from verify_distributions import verify
 
 
 class PackagingTests(unittest.TestCase):
@@ -54,6 +57,25 @@ class PackagingTests(unittest.TestCase):
         self.wheel("manylinux_2_28_x86_64")
         with self.assertRaisesRegex(ValueError, "More than one wheel"):
             prepare(self.wheels, self.output, self.root)
+
+    def sdist(self, include_license):
+        with tarfile.open(self.wheels / "seiso-0.0.0.tar.gz", "w:gz") as archive:
+            files = {"PKG-INFO": b"Name: seiso\nVersion: 0.0.0\nLicense-File: LICENSE\n"}
+            if include_license:
+                files["LICENSE"] = b"License\r\n"
+            for name, data in files.items():
+                member = tarfile.TarInfo(f"seiso-0.0.0/{name}")
+                member.size = len(data)
+                archive.addfile(member, io.BytesIO(data))
+
+    def test_source_archive_requires_its_declared_license(self):
+        self.sdist(include_license=False)
+        with self.assertRaisesRegex(KeyError, "LICENSE"):
+            verify(self.wheels, self.root)
+
+    def test_source_archive_accepts_license_with_windows_newlines(self):
+        self.sdist(include_license=True)
+        verify(self.wheels, self.root)
 
 
 if __name__ == "__main__":
