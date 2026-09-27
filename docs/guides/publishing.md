@@ -4,7 +4,7 @@ kind: howto
 
 # Publish seiso
 
-Use [Build and publish distributions](../.github/workflows/publish.yml) to
+Use [Build and publish distributions](../../.github/workflows/publish.yml) to
 publish `seiso` on crates.io, `@scarletkc/seiso` on npm, `seiso` on PyPI, and
 a GitHub Release from one release commit. All three package installations
 provide the `seiso` executable. The workflow runs only through
@@ -37,7 +37,7 @@ explicit version to advance the prerelease number.
 
 Prereleases publish under npm's `next` tag and are marked as prereleases on
 GitHub. Stable versions publish under npm's `latest` tag. Version parsing and
-Python normalization are shared in [`scripts/versions.py`](../scripts/versions.py).
+Python normalization are shared in [`scripts/versions.py`](../../scripts/versions.py).
 
 `--note` creates `docs/release-notes/VERSION.md` with a `## Release title`
 heading. Fill in its body with user-facing changes and migration instructions

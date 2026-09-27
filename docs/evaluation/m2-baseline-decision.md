@@ -20,7 +20,7 @@ The first M2 revision that passes the absolute performance gates establishes
 the M2 baseline. The M1 comparison remains in the benchmark evidence but does
 not enforce the relative limit across this transition. Subsequent M2 relative
 changes are reported for review under the
-[manual evaluation policy](../development.md#performance-and-ecosystem-checks).
+[manual evaluation policy](../guides/development.md#performance-and-ecosystem-checks).
 
 Cold full checks must remain below one second and warm full checks below
 500 milliseconds. Warm hooks including process startup must remain below

@@ -14,7 +14,7 @@ the frozen external corpus contains none. The
 [syntax audit](../../corpus/results/m1/syntax-audit.json) records the input
 counts, parser fingerprint, and verification method.
 
-The [existing design](../seiso%20设计与实施方案.md#质量保障) requires at least
+The [existing design](../design/history.md#quality-assurance) requires at least
 100 labeled natural holdout diagnostics and precision of at least 95% for
 each stable rule. M1 also requires every M1 consistency rule to reach stable.
 Zero occurrences cannot establish precision or satisfy that sample threshold.

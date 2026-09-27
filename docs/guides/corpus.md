@@ -4,7 +4,7 @@ kind: howto
 
 # Verify the pinned corpus
 
-The [corpus directory](../corpus/README.md) contains the pinned source
+The [corpus directory](../../corpus/README.md) contains the pinned source
 manifest and fetch tool. Use Python 3.12 or later and a Rust toolchain
 matching this checkout's requirements. Run from the repository root:
 
@@ -34,16 +34,16 @@ timestamps, so reversed discovery order and process scheduling can be
 checked by comparing complete reports from the same build.
 
 The corpus directory owns [selection scopes, repository splits, and upstream
-license references](../corpus/docs/selection.md), alongside acceptance
+license references](../../corpus/docs/selection.md), alongside acceptance
 artifacts. Source files are fetched by full commit and stored as verified
 content blobs in the ignored `corpus/data/` directory. The parser does not
 load or execute source-repository configuration or code.
 
-See the [M0 acceptance record](evaluation/m0-2026-09-27.md) for the initial
+See the [M0 acceptance record](../evaluation/m0-2026-09-27.md) for the initial
 run. Parser acceptance does not measure rule precision or performance.
 
 For rule precision and promotion, follow the
-[single-file evaluation procedure](../corpus/docs/evaluation.md).
+[single-file evaluation procedure](../../corpus/docs/evaluation.md).
 
 ## Exercise the rule engine
 
@@ -62,6 +62,6 @@ be byte-identical between checks, with valid source spans and coordinates.
 
 `LNK001` is excluded because the blob cache does not contain complete
 upstream file trees. Its filesystem behavior is covered by the
-[engine fixtures](../tests/engine.rs). This test reports
+[engine fixtures](../../tests/engine.rs). This test reports
 execution and diagnostic counts, not precision, and leaves the M0 acceptance
 artifacts unchanged. Missing or modified corpus files fail the test.

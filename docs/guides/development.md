@@ -4,7 +4,7 @@ kind: howto
 
 # Development
 
-The [architecture reference](architecture.md) maps module responsibilities and
+The [architecture reference](../reference/architecture.md) maps module responsibilities and
 command execution. Use this guide to build, test, inspect parser behavior, and
 run performance or ecosystem comparisons.
 
@@ -74,14 +74,14 @@ upstream parser even when a matching definition exists. For example,
 `[the docs][ A  B ]` does not resolve to `[a b]: target.md`. The original
 text is preserved, but the link is absent from the link collection. The
 `markdown_rs_spaced_reference_limitation_retains_original_text` regression
-in [document tests](../tests/document.rs) records this boundary.
+in [document tests](../../tests/document.rs) records this boundary.
 
 ## Milestone acceptance
 
-The [evaluation policy](evaluation-policy.md) defines promotion and acceptance
+The [evaluation policy](../evaluation/policy.md) defines promotion and acceptance
 requirements. Use the [corpus procedure](corpus.md) for parser evaluation and
-the [rule evaluation procedure](../corpus/docs/evaluation.md) for fresh rule
-evidence or historical replay. The [milestone index](roadmap.md#milestone-evidence)
+the [rule evaluation procedure](../../corpus/docs/evaluation.md) for fresh rule
+evidence or historical replay. The [milestone index](../design/roadmap.md#milestone-evidence)
 links to dated results. See [publishing](publishing.md) for distribution validation.
 
 ## Performance and ecosystem checks
@@ -99,13 +99,13 @@ checks, warm checks, and the warm hook including process startup. Preview
 rules are timed separately. Use a native Linux filesystem for local Linux
 measurements; the acceptance thresholds apply to the standard Linux CI runner.
 
-The [CI workflow](../.github/workflows/ci.yml) runs on pull requests targeting
+The [CI workflow](../../.github/workflows/ci.yml) runs on pull requests targeting
 `main` and pushes to `main`. It checks formatting, Clippy, tests, and the
 repository's documents with stable rules. Further updates cancel an older
 run for the same PR or branch. Use its manual trigger to check another branch
 before opening a PR.
 
-Run [Evaluation](../.github/workflows/evaluation.yml) manually from Actions
+Run [Evaluation](../../.github/workflows/evaluation.yml) manually from Actions
 for milestone acceptance, release validation, or substantial rule and parser
 changes. Leave `baseline_ref` empty to compare diagnostics with the recorded
 corpus run and benchmark only the selected revision. Supply a Git ref to run

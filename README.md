@@ -33,7 +33,7 @@ seiso checks documents against this convention. Each diagnostic says where
 the problem is and how to fix it, so an agent can repair the page from
 seiso's output alone. seiso doesn't guess whether prose sounds
 machine-written, and it leaves formatting and spelling to other tools. The
-[convention](https://github.com/scarletkc/seiso/blob/main/docs/convention.md)
+[convention](https://github.com/scarletkc/seiso/blob/main/docs/reference/convention.md)
 defines each kind's contract and the evidence a diagnostic can claim.
 
 ## Try it
@@ -46,15 +46,17 @@ cargo run -p seiso -- rule KND001
 ```
 
 Default checks use accepted stable rules; `--preview` adds selected preview
-rules. See [checking documents](https://github.com/scarletkc/seiso/blob/main/docs/checking.md)
-for configuration and output, [integrations](https://github.com/scarletkc/seiso/blob/main/docs/integrations.md)
-for editor hooks and pre-commit, and [development](https://github.com/scarletkc/seiso/blob/main/docs/development.md)
+rules. See [checking documents](https://github.com/scarletkc/seiso/blob/main/docs/guides/checking.md)
+for configuration and output, [integrations](https://github.com/scarletkc/seiso/blob/main/docs/guides/integrations.md)
+for editor hooks and pre-commit, and [development](https://github.com/scarletkc/seiso/blob/main/docs/guides/development.md)
 for validation commands. `seiso parse` inspects the document model without
 running rules.
 
-The [architecture](https://github.com/scarletkc/seiso/blob/main/docs/architecture.md)
+The [architecture](https://github.com/scarletkc/seiso/blob/main/docs/reference/architecture.md)
 describes command execution; the
-[roadmap](https://github.com/scarletkc/seiso/blob/main/docs/roadmap.md)
+[roadmap](https://github.com/scarletkc/seiso/blob/main/docs/design/roadmap.md)
 contains proposed features and links to milestone evidence.
+The [documentation index](https://github.com/scarletkc/seiso/blob/main/docs/README.md)
+organizes the guides, references, and evaluation records.
 
 Licensed under [MIT](https://github.com/scarletkc/seiso/blob/main/LICENSE).

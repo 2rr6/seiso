@@ -9,16 +9,16 @@ input loading, analysis, and command rendering.
 
 | Module | Responsibility |
 | --- | --- |
-| [`main`](../src/main.rs), [`commands`](../src/commands.rs) | CLI arguments, command orchestration, rendering and writes |
-| [`workspace`](../src/workspace.rs) | Shared discovery, policy resolution, scoped reads, parsing, and input errors |
-| [`analysis`](../src/analysis.rs) | Check execution, suppression application, report selection, and fix proposals |
-| [`config`](../src/config/mod.rs) | Configuration discovery, explicit inheritance, and path policy |
-| [`md`](../src/md/mod.rs) | Content-derived document model and original source mappings |
-| [`paths`](../src/paths.rs) | Path normalization, local destination parsing, and filesystem target status |
-| [`index`](../src/index/mod.rs) | Workspace facts, anchors, comparison domains, and resolved links |
-| [`rules`](../src/rules/mod.rs) | Rule registry, rule functions, suppression states, and safe edit construction |
-| [`diagnostics`](../src/diagnostics/mod.rs) | Diagnostics, locations, related evidence, and fix data |
-| [`cache`](../src/cache/mod.rs) | Content-addressed parse storage |
+| [`main`](../../src/main.rs), [`commands`](../../src/commands.rs) | CLI arguments, command orchestration, rendering and writes |
+| [`workspace`](../../src/workspace.rs) | Shared discovery, policy resolution, scoped reads, parsing, and input errors |
+| [`analysis`](../../src/analysis.rs) | Check execution, suppression application, report selection, and fix proposals |
+| [`config`](../../src/config/mod.rs) | Configuration discovery, explicit inheritance, and path policy |
+| [`md`](../../src/md/mod.rs) | Content-derived document model and original source mappings |
+| [`paths`](../../src/paths.rs) | Path normalization, local destination parsing, and filesystem target status |
+| [`index`](../../src/index/mod.rs) | Workspace facts, anchors, comparison domains, and resolved links |
+| [`rules`](../../src/rules/mod.rs) | Rule registry, rule functions, suppression states, and safe edit construction |
+| [`diagnostics`](../../src/diagnostics/mod.rs) | Diagnostics, locations, related evidence, and fix data |
+| [`cache`](../../src/cache/mod.rs) | Content-addressed parse storage |
 
 ## Loading and command scope
 
@@ -83,7 +83,7 @@ can exist while its anchors remain unknown. External URLs, template values,
 outward paths, and unresolved inputs do not justify a missing-target diagnosis.
 GitHub-style heading slugs include duplicate suffixes; HTML `id` and anchor
 `name` attributes are indexed. Undefined reference labels remain ordinary
-CommonMark text. [LNK001](rules/LNK001.md) and [LNK002](rules/LNK002.md) define the
+CommonMark text. [LNK001](../rules/LNK001.md) and [LNK002](../rules/LNK002.md) define the
 diagnostic boundaries.
 
 ## Suppression and fixes
@@ -91,8 +91,8 @@ diagnostic boundaries.
 `policy` inspects declarations without claiming rule outcomes: enabled valid
 codes have state `not_evaluated`; invalid and disabled codes retain those
 states. `policy --evaluate` records actual active, stale, or incomplete states.
-[SUP001](rules/SUP001.md) owns syntax and scope precedence;
-[SUP002](rules/SUP002.md) owns completion and unused-code rules.
+[SUP001](../rules/SUP001.md) owns syntax and scope precedence;
+[SUP002](../rules/SUP002.md) owns completion and unused-code rules.
 
 Suppression codes are carried as structured diagnostic data, so wording changes
 cannot change which codes a fix removes. Fix mode stops after the initial

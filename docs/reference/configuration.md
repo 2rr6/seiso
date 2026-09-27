@@ -5,10 +5,10 @@ kind: reference
 # Configuration
 
 `seiso init` creates a starting configuration. `seiso policy` shows effective
-settings and file policy; [checking documents](checking.md) covers commands and
+settings and file policy; [checking documents](../guides/checking.md) covers commands and
 output. The accepted fields and defaults are defined by `Settings`,
 `LintSettings`, `DupSettings`, `PtrSettings`, and `Lexicon` in
-[`src/config/mod.rs`](../src/config/mod.rs).
+[`src/config/mod.rs`](../../src/config/mod.rs).
 
 ## Discovery and inheritance
 
@@ -94,4 +94,4 @@ extend-stale-markers = ["截至目前"]
 Rule documentation identifies each rule's thresholds and word-list options.
 English, Chinese, and Japanese word lists can be extended independently;
 Chinese and Japanese matching does not require word segmentation. Thresholds
-are calibrated on tuning data under the [evaluation policy](evaluation-policy.md).
+are calibrated on tuning data under the [evaluation policy](../evaluation/policy.md).

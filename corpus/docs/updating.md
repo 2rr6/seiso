@@ -20,7 +20,7 @@ python -m unittest discover -s corpus -p 'test_*.py'
 
 Review the complete lock diff: resolved commits, file membership, content
 hashes, licensing references, and split changes. Then repeat the
-[parser evaluation](../../docs/corpus.md) and retain its new acceptance
+[parser evaluation](../../docs/guides/corpus.md) and retain its new acceptance
 artifacts alongside the parser changes in the same review.
 
 After an interrupted initial freeze, resume without moving unchanged source

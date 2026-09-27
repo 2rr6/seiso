@@ -8,9 +8,9 @@ Rule promotion, implementation regression, performance acceptance, and registry
 publication answer different questions. A passing test suite establishes
 tested behavior; a frozen natural evaluation establishes measured precision;
 a successful upload establishes distribution availability.
-The [evaluation procedure](../corpus/docs/evaluation.md) defines how to collect,
+The [evaluation procedure](../../corpus/docs/evaluation.md) defines how to collect,
 review, and replay evidence. Dated decisions and results remain in
-[`docs/evaluation/`](evaluation/) as individual records.
+[`docs/evaluation/`](./) as individual records.
 
 ## Stable promotion
 
@@ -28,7 +28,7 @@ licenses; source diversity and annotation quality need review alongside scores.
 Missed diagnoses are reported without a recall gate: conservative reporting is
 preferred to unsupported diagnoses.
 
-The [M1 protocol decision](evaluation/m1-gate-proposal.md) grants a distinct
+The [M1 protocol decision](m1-gate-proposal.md) grants a distinct
 conformance route only to the named seiso declaration rules. Its positive,
 negative, malformed-input, scope, disabled, incomplete, deterministic-output,
 source-position, and natural-regression requirements remain binding.
@@ -64,14 +64,14 @@ snapshots are reviewed as behavior changes. Required regression cases include:
 
 Any reproduced panic is a release blocker. Parser/model fuzzing is a planned
 way to extend coverage; it is not an existing CI job. The exact routine checks
-are defined in the [CI workflow](../.github/workflows/ci.yml), with local commands
-in [development](development.md#build-and-validate).
+are defined in the [CI workflow](../../.github/workflows/ci.yml), with local commands
+in [development](../guides/development.md#build-and-validate).
 
 ## Performance acceptance
 
 The canonical workload size and absolute latency targets are `FILE_COUNT`,
 `BYTES_PER_FILE`, and `TARGETS_SECONDS` in
-[`scripts/benchmark_m2.py`](../scripts/benchmark_m2.py). Measurements use the
+[`scripts/benchmark_m2.py`](../../scripts/benchmark_m2.py). Measurements use the
 default rule set, file-backed concise output, process startup for hook checks,
 and the standard Linux CI runner. Record CPU model, core count, cold/warm cache
 state, revision, and workload hashes with the result.
@@ -81,10 +81,10 @@ duplicate workloads require candidate filtering before expensive comparisons;
 their timeouts remain visible evidence. Relative changes against a selected
 baseline are reviewed separately from absolute acceptance. Scope differences
 between historical engines are recorded in the
-[baseline decision](evaluation/m2-baseline-decision.md).
+[baseline decision](m2-baseline-decision.md).
 
 Run ecosystem comparisons for milestone acceptance, release validation, and
 substantial parser or rule changes. Review added, removed, and changed diagnoses;
 preserve complete reports alongside summaries. The
-[development procedure](development.md#performance-and-ecosystem-checks)
+[development procedure](../guides/development.md#performance-and-ecosystem-checks)
 provides the commands and manual workflow entry point.

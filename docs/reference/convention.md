@@ -7,7 +7,7 @@ kind: reference
 seiso checks document responsibilities, fact ownership, repository links, and
 unsupported claims. It does not identify AI authorship, check spelling or
 formatting, or rewrite meaning. The convention is independent of any writing
-skill or prompt. Its original motivation is recorded in the [design history](seiso%20设计与实施方案.md).
+skill or prompt. Its original motivation is recorded in the [design history](../design/history.md).
 
 ## Document responsibilities
 
@@ -30,7 +30,7 @@ the declaration does not prove that a statement is correct or current.
 `generated` can only be assigned in configuration. Generated documents are
 exempt from rules but remain index sources, link targets, and possible owners
 of duplicated facts. Invalid frontmatter does not fall back to a configured
-kind. See [KND001](rules/KND001.md) and [KND002](rules/KND002.md) for executable examples.
+kind. See [KND001](../rules/KND001.md) and [KND002](../rules/KND002.md) for executable examples.
 
 ## Facts and pointers
 
@@ -52,9 +52,9 @@ Ownership is evaluated per pair of duplicate blocks, without transitive
 merging. The precedence is `canonical: true`, then generated, reference, ADR,
 how-to, README, and other kinds. `canonical` applies to the whole file. Ties
 remain unresolved; Git age or discovery order never decides ownership.
-Rule-specific matching belongs to [DUP001](rules/DUP001.md),
-[DUP002](rules/DUP002.md), [DUP003](rules/DUP003.md),
-[OWN001](rules/OWN001.md), and [OWN002](rules/OWN002.md).
+Rule-specific matching belongs to [DUP001](../rules/DUP001.md),
+[DUP002](../rules/DUP002.md), [DUP003](../rules/DUP003.md),
+[OWN001](../rules/OWN001.md), and [OWN002](../rules/OWN002.md).
 
 ## Evidence and exceptions
 
@@ -65,16 +65,16 @@ Heuristic rules describe observed features and make conditional suggestions.
 Semantic repairs remain the author's or agent's decision.
 
 Exceptions name complete rule codes and give a reviewable reason. The syntax
-and scope are defined by [SUP001](rules/SUP001.md); completion and unused-code
-semantics are defined by [SUP002](rules/SUP002.md). A suppression cannot make an
+and scope are defined by [SUP001](../rules/SUP001.md); completion and unused-code
+semantics are defined by [SUP002](../rules/SUP002.md). A suppression cannot make an
 incomplete check complete.
 
 ## Rule availability
 
 Rules are enabled or disabled; there is no warning tier. Stable rules are
 selected by default. Preview rules require explicit preview opt-in as well as
-selection. The [evaluation policy](evaluation-policy.md) governs promotion.
+selection. The [evaluation policy](../evaluation/policy.md) governs promotion.
 `seiso rule --all` lists implemented rules and their embedded explanations;
-the registry in [`src/rules/mod.rs`](../src/rules/mod.rs) owns rule availability,
+the registry in [`src/rules/mod.rs`](../../src/rules/mod.rs) owns rule availability,
 status, kind applicability, and input requirements. Proposed rules belong to
-the [roadmap](roadmap.md), and their codes are not accepted configuration selectors.
+the [roadmap](../design/roadmap.md), and their codes are not accepted configuration selectors.

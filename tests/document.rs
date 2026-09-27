@@ -328,7 +328,7 @@ fn document_cache_roundtrip_is_lossless_and_deterministic() {
 #[test]
 fn multilingual_corpus_and_generated_utf8_never_panic_or_break_ranges() {
     for source in [
-        include_str!("../docs/seiso 设计与实施方案.md"),
+        include_str!("../docs/design/history.md"),
         "",
         "\0",
         "&NotEqualTilde; &#99999999; &#xFFFFFFFF;",

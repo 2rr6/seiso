@@ -17,7 +17,7 @@ documents that need a different role. Use `seiso rule KND001` for an example.
 Stable rules are enabled by default. Add `--preview` or `preview = true` in the
 configuration to opt into selected preview rules. `seiso rule <CODE>` shows a
 rule's status; `seiso policy` shows the rules enabled for each file. The
-[evaluation policy](evaluation-policy.md) records the promotion criteria.
+[evaluation policy](../evaluation/policy.md) records the promotion criteria.
 
 ## Select files and rules
 
@@ -43,7 +43,7 @@ Use `seiso check --help` for command options and `seiso rule --all` for the
 implemented rules, their examples, and exceptions. `--select` replaces the
 configured selection; `--extend-select` adds to it.
 Only implemented families and rule codes are accepted. The
-[configuration reference](configuration.md) defines inheritance, precedence,
+[configuration reference](../reference/configuration.md) defines inheritance, precedence,
 kind mappings, domains, and rule selection.
 
 ## Check unsaved content

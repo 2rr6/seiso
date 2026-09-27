@@ -17,7 +17,7 @@ python corpus/corpus.py fetch
 python corpus/corpus.py verify
 ```
 
-Follow the [parser verification procedure](../docs/corpus.md) to evaluate
+Follow the [parser verification procedure](../docs/guides/corpus.md) to evaluate
 the snapshot against the current parser.
 
 See [selection and licensing](docs/selection.md) for the corpus contract,
