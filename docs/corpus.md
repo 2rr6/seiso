@@ -50,7 +50,7 @@ For rule precision and promotion, follow the
 After fetching the corpus, run the optional rule-engine robustness test:
 
 ```sh
-cargo test -p seiso_rules --test corpus --locked -- --ignored --nocapture
+cargo test --test corpus --locked -- --ignored --nocapture
 ```
 
 The test verifies each locked document's byte size and SHA-256, then checks
@@ -62,6 +62,6 @@ be byte-identical between checks, with valid source spans and coordinates.
 
 `LNK001` is excluded because the blob cache does not contain complete
 upstream file trees. Its filesystem behavior is covered by the
-[engine fixtures](../crates/seiso_rules/tests/engine.rs). This test reports
+[engine fixtures](../tests/engine.rs). This test reports
 execution and diagnostic counts, not precision, and leaves the M0 acceptance
 artifacts unchanged. Missing or modified corpus files fail the test.

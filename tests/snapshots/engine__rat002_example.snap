@@ -1,0 +1,27 @@
+---
+source: tests/engine.rs
+expression: result.diagnostics
+---
+[
+  {
+    "code": "RAT002",
+    "message": "This heading introduces a design-choice rationale in a how-to or reference page.",
+    "filename": "docs/guide.md",
+    "location": {
+      "row": 4,
+      "column": 4
+    },
+    "end_location": {
+      "row": 4,
+      "column": 16
+    },
+    "byte_range": {
+      "start": 23,
+      "end": 35
+    },
+    "fix": null,
+    "url": null,
+    "related": [],
+    "suggestion": "Move the decision rationale to an ADR and keep the procedure or contract here."
+  }
+]

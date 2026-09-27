@@ -1,0 +1,27 @@
+---
+source: tests/engine.rs
+expression: result.diagnostics
+---
+[
+  {
+    "code": "PTR001",
+    "message": "This pointer links to a repository root.",
+    "filename": "docs/guide.md",
+    "location": {
+      "row": 4,
+      "column": 32
+    },
+    "end_location": {
+      "row": 4,
+      "column": 33
+    },
+    "byte_range": {
+      "start": 55,
+      "end": 56
+    },
+    "fix": null,
+    "url": null,
+    "related": [],
+    "suggestion": "Link to the file, symbol, or heading that answers the reader's question."
+  }
+]

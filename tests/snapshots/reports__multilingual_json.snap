@@ -1,0 +1,86 @@
+---
+source: tests/reports.rs
+expression: render_json(&diagnostics).unwrap()
+---
+[
+  {
+    "code": "TST001",
+    "message": "Source mapping example.",
+    "filename": "docs/mixed.md",
+    "location": {
+      "row": 2,
+      "column": 11
+    },
+    "end_location": {
+      "row": 2,
+      "column": 15
+    },
+    "byte_range": {
+      "start": 19,
+      "end": 23
+    },
+    "fix": null,
+    "url": null,
+    "related": [],
+    "suggestion": "Inspect the original Markdown range."
+  },
+  {
+    "code": "TST002",
+    "message": "Source mapping example.",
+    "filename": "docs/mixed.md",
+    "location": {
+      "row": 2,
+      "column": 24
+    },
+    "end_location": {
+      "row": 2,
+      "column": 26
+    },
+    "byte_range": {
+      "start": 32,
+      "end": 38
+    },
+    "fix": null,
+    "url": null,
+    "related": [],
+    "suggestion": "Inspect the original Markdown range."
+  },
+  {
+    "code": "TST003",
+    "message": "Source mapping example.",
+    "filename": "docs/mixed.md",
+    "location": {
+      "row": 3,
+      "column": 7
+    },
+    "end_location": {
+      "row": 3,
+      "column": 9
+    },
+    "byte_range": {
+      "start": 57,
+      "end": 63
+    },
+    "fix": null,
+    "url": null,
+    "related": [
+      {
+        "filename": "docs/reference.md",
+        "location": {
+          "row": 1,
+          "column": 3
+        },
+        "end_location": {
+          "row": 1,
+          "column": 5
+        },
+        "byte_range": {
+          "start": 2,
+          "end": 8
+        },
+        "message": "Related definition."
+      }
+    ],
+    "suggestion": "Inspect the original Markdown range."
+  }
+]

@@ -3,8 +3,24 @@ name: Build and publish distributions
 on:
   workflow_dispatch:
     inputs:
+      publish_all:
+        description: Publish to npm, crates.io, PyPI, and GitHub Releases
+        type: boolean
+        default: false
+      publish_npm:
+        description: Publish only the verified npm archive
+        type: boolean
+        default: false
+      publish_crates:
+        description: Publish the verified seiso package to crates.io
+        type: boolean
+        default: false
       publish_pypi:
         description: Publish the verified wheels and source archive to PyPI
+        type: boolean
+        default: false
+      publish_github:
+        description: Create a GitHub Release without registry uploads
         type: boolean
         default: false
 
@@ -16,7 +32,52 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - run: python scripts/release.py check
+        id: version
+      - run: python -m unittest discover -s scripts -p 'test_*.py'
+      - run: python scripts/github_release.py notes
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+          if-no-files-found: error
+
+  crates:
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: python scripts/release.py crates
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cargo-package
+          path: target/package/seiso-${{ needs.preflight.outputs.version }}.crate
+          if-no-files-found: error
+
   wheels:
+    needs: preflight
     strategy:
       fail-fast: false
       matrix:
@@ -32,7 +93,7 @@ jobs:
           python-version: '3.12'
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --workspace --locked
+      - run: cargo test --locked
       - uses: PyO3/maturin-action@v1
         with:
           maturin-version: '1.15.0'
@@ -84,6 +145,8 @@ jobs:
       - run: python -m unittest discover -s scripts -p 'test_*.py'
       - run: python scripts/prepare_npm.py --wheels dist
       - run: npm pack ./npm/seiso --pack-destination dist
+      - uses: dtolnay/rust-toolchain@stable
+      - run: python scripts/release.py npm
       - name: Exercise the packed npm executable
         run: |
           npm exec --yes --package ./dist/*.tgz -- seiso --version
@@ -98,9 +161,61 @@ jobs:
           path: dist/*.tgz
           if-no-files-found: error
 
+  publish-npm:
+    if: inputs.publish_all || inputs.publish_npm
+    needs: [wheels, npm, crates]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --global npm@11.15.0
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: dist
+      - run: python scripts/release.py npm --execute
+
+  publish-crates:
+    if: inputs.publish_all || inputs.publish_crates
+    needs: [wheels, npm, crates]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: crates-io
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+      - name: Publish seiso if the version is missing
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: python scripts/release.py crates --execute
+
   pypi:
-    if: inputs.publish_pypi
-    needs: [wheels, npm]
+    if: inputs.publish_all || inputs.publish_pypi
+    needs: [wheels, npm, crates]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: pypi
@@ -115,3 +230,49 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           skip-existing: true
+
+  github-release:
+    if: >-
+      always() && !cancelled() &&
+      (inputs.publish_all || inputs.publish_github || inputs.publish_npm || inputs.publish_crates || inputs.publish_pypi) &&
+      needs.preflight.result == 'success' &&
+      needs.wheels.result == 'success' && needs.npm.result == 'success' && needs.crates.result == 'success' &&
+      (needs.publish-npm.result == 'success' || needs.publish-npm.result == 'skipped') &&
+      (needs.publish-crates.result == 'success' || needs.publish-crates.result == 'skipped') &&
+      (needs.pypi.result == 'success' || needs.pypi.result == 'skipped')
+    needs: [preflight, wheels, npm, crates, publish-npm, publish-crates, pypi]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: github-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: distributions-*
+          merge-multiple: true
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: cargo-package
+          path: dist
+      - name: Create release and upload missing assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/github_release.py publish --output release-notes/release-notes.md --execute

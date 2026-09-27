@@ -11,10 +11,10 @@ from email.parser import BytesParser
 
 
 def prepare(wheels: Path, output: Path, root: Path) -> None:
-    version = tomllib.loads((root / "Cargo.toml").read_text(encoding="utf-8"))["workspace"]["package"]["version"]
+    version = tomllib.loads((root / "Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]
     package = json.loads((output / "package.json").read_text(encoding="utf-8"))
     if package["name"] != "@scarletkc/seiso" or package["version"] != version:
-        raise ValueError("npm package must use @scarletkc/seiso and the Cargo workspace version")
+        raise ValueError("npm package must use @scarletkc/seiso and the Cargo package version")
     binaries = {}
     for wheel in sorted(wheels.glob("*.whl")):
         if wheel.name.endswith("-win_amd64.whl"):

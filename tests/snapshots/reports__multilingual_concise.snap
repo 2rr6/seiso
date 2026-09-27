@@ -1,0 +1,7 @@
+---
+source: tests/reports.rs
+expression: render_concise(&diagnostics)
+---
+docs/mixed.md:2:11: TST001 Source mapping example. Suggestion: Inspect the original Markdown range.
+docs/mixed.md:2:24: TST002 Source mapping example. Suggestion: Inspect the original Markdown range.
+docs/mixed.md:3:7: TST003 Source mapping example. Suggestion: Inspect the original Markdown range. Related: docs/reference.md:1:3: Related definition.

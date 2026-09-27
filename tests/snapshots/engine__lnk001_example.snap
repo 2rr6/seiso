@@ -1,0 +1,27 @@
+---
+source: tests/engine.rs
+expression: result.diagnostics
+---
+[
+  {
+    "code": "LNK001",
+    "message": "Relative link target \"missing-reference.md\" does not exist in the workspace.",
+    "filename": "docs/guide.md",
+    "location": {
+      "row": 5,
+      "column": 6
+    },
+    "end_location": {
+      "row": 5,
+      "column": 57
+    },
+    "byte_range": {
+      "start": 26,
+      "end": 77
+    },
+    "fix": null,
+    "url": null,
+    "related": [],
+    "suggestion": "Update the relative path or restore the target file; check the path from this document's directory."
+  }
+]

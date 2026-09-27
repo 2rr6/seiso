@@ -28,10 +28,9 @@ def read(path):
 
 def fingerprints():
     paths = [ROOT / "Cargo.toml", ROOT / "Cargo.lock", Path(__file__)]
-    for name in ["seiso_rules", "seiso_index", "seiso_config", "seiso_md", "seiso_diagnostics"]:
-        base = ROOT / "crates" / name
-        paths += [base / "Cargo.toml"] + sorted((base / "src").rglob("*.rs"))
-    paths.append(ROOT / "crates/seiso_rules/examples/evaluate_m2.rs")
+    paths += sorted((ROOT / "src").rglob("*.rs"))
+    paths += sorted((ROOT / "docs/rules").glob("*.md"))
+    paths.append(ROOT / "examples/evaluate_m2.rs")
     return {path.relative_to(ROOT).as_posix(): digest(path.read_bytes()) for path in sorted(paths)}
 
 
@@ -120,7 +119,7 @@ def run(output, corpus=ROOT / "corpus"):
     (work / "reverse-input.json").write_bytes(encode(reverse_inputs(inputs)))
     before = fingerprints()
     cargo = shutil.which("cargo") or str(Path.home() / ".cargo/bin/cargo.exe")
-    build = subprocess.run([cargo, "build", "--release", "--locked", "-p", "seiso_rules", "--example", "evaluate_m2", "--message-format=json"], cwd=ROOT, capture_output=True, check=True)
+    build = subprocess.run([cargo, "build", "--release", "--locked", "--example", "evaluate_m2", "--message-format=json"], cwd=ROOT, capture_output=True, check=True)
     binary = next(Path(event["executable"]) for line in build.stdout.splitlines() if (event := json.loads(line)).get("reason") == "compiler-artifact" and event.get("target", {}).get("name") == "evaluate_m2" and event.get("executable"))
     for order in ["forward", "reverse"]:
         subprocess.run([str(binary), str(work / f"{order}-input.json"), str(work / f"{order}.json")], check=True)

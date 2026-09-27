@@ -57,9 +57,9 @@ rules reach stable, so approval alone does not complete M1.
 | Repeated results and public examples | `engine::rule_documentation_examples_execute_the_published_contract`; corpus robustness test | Every added contract case compares the complete serialized result of two evaluations |
 
 The matrix references tests in
-[`engine.rs`](../../crates/seiso_rules/tests/engine.rs),
-[`suppression.rs`](../../crates/seiso_rules/tests/suppression.rs), and
-[`acceptance_contract.rs`](../../crates/seiso_rules/tests/acceptance_contract.rs).
+[`engine.rs`](../../tests/engine.rs),
+[`suppression.rs`](../../tests/suppression.rs), and
+[`acceptance_contract.rs`](../../tests/acceptance_contract.rs).
 On 2026-09-28, their 27 Windows tests passed. Unix-only filesystem tests were
 not executed in that run. This run supports the matrix; it is not a natural
 precision result. The [protocol acceptance receipt](../../corpus/results/m1/protocol-acceptance.json)

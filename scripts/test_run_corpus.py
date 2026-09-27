@@ -7,9 +7,22 @@ import unittest
 from unittest.mock import patch
 
 from run_corpus import load_corpus, run_one
+import evaluate_m1
+import evaluate_m2
+import run_corpus
 
 
 class CorpusRunnerTests(unittest.TestCase):
+    def test_fingerprints_cover_single_package_sources_and_embedded_rules(self):
+        for fingerprints in (run_corpus.parser_sources, evaluate_m1.fingerprints, evaluate_m2.fingerprints):
+            with self.subTest(tool=fingerprints.__module__):
+                recorded = fingerprints()
+                self.assertIn("src/lib.rs", recorded)
+                self.assertIn("src/md/parser.rs", recorded)
+                self.assertIn("docs/rules/KND001.md", recorded)
+                self.assertTrue(any(name.startswith("examples/") for name in recorded))
+                self.assertFalse(any(name.startswith("crates/") for name in recorded))
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)

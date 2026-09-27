@@ -23,6 +23,6 @@ Issues = "https://github.com/scarletkc/seiso/issues"
 
 [tool.maturin]
 bindings = "bin"
-manifest-path = "crates/seiso_cli/Cargo.toml"
+manifest-path = "Cargo.toml"
 strip = true
 include = [{ path = "LICENSE", format = "sdist" }]

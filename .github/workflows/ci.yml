@@ -32,8 +32,8 @@ jobs:
       - if: runner.os == 'Linux'
         run: cargo fmt --all -- --check
       - if: runner.os == 'Linux'
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - run: cargo test --workspace --locked
+        run: cargo clippy --all-targets --locked -- -D warnings
+      - run: cargo test --locked
       - if: runner.os == 'Linux'
         run: cargo run --locked -p seiso -- check --output-format concise
       - if: runner.os == 'Linux'

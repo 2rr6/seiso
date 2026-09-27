@@ -1,29 +1,28 @@
 # Development
 
-The Cargo workspace follows the
-[implementation plan](seiso%20设计与实施方案.md#实施路线图). `seiso_md` owns
-content-derived document data, `seiso_config` owns configuration and path
-policy, `seiso_diagnostics` owns source locations and diagnostic rendering,
-`seiso_rules` owns rule execution and suppression state, `seiso_index` owns
-current workspace facts and anchor resolution, `seiso_cache` owns the
-content-addressed parse cache, and the `seiso`
-package in `crates/seiso_cli` joins them in the command-line interface.
+The root Cargo package contains the library in [src/lib.rs](../src/lib.rs) and
+the CLI in [src/main.rs](../src/main.rs). The `md` module owns content-derived
+document data, `config` owns configuration and path policy, `diagnostics` owns
+source locations and diagnostic rendering, `rules` owns rule execution and
+suppression state, `index` owns current workspace facts and anchor resolution,
+and `cache` owns the content-addressed parse cache. CLI commands join these
+modules in [src/commands.rs](../src/commands.rs).
 
 ## Build and validate
 
 Use a stable Rust toolchain with Cargo, rustfmt, and Clippy.
 
 ```sh
-cargo build --workspace --locked
+cargo build --locked
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo test --workspace --locked
+cargo clippy --all-targets --locked -- -D warnings
+cargo test --locked
 ```
 
 Tests include source spans in English, Chinese, and Japanese; Markdown
 structure; configuration precedence and inheritance; diagnostic snapshots;
 and repeatable CLI output. Snapshot changes are reviewed as ordinary Git
-diffs. `INSTA_UPDATE=always cargo test --workspace` regenerates snapshots
+diffs. `INSTA_UPDATE=always cargo test` regenerates snapshots
 when an output change is intentional.
 
 With Python 3.12 or later, check packaging and corpus tools:
@@ -35,7 +34,7 @@ python -m unittest discover -s corpus/evaluation -p 'test_*.py'
 ```
 
 Run `seiso rule --all` to read the implemented rules. Their explanations are
-embedded from the Markdown files in `crates/seiso_rules/docs/`.
+embedded from the Markdown files in `docs/rules/`.
 Their positive and negative Markdown examples execute as tests; positive
 diagnostics are stored in snapshots. Add regression cases for fragment
 boundaries, languages, source mappings, and suppression scope when changing
@@ -75,7 +74,7 @@ upstream parser even when a matching definition exists. For example,
 `[the docs][ A  B ]` does not resolve to `[a b]: target.md`. The original
 text is preserved, but the link is absent from the link collection. The
 `markdown_rs_spaced_reference_limitation_retains_original_text` regression
-in [document tests](../crates/seiso_md/tests/document.rs) records this boundary.
+in [document tests](../tests/document.rs) records this boundary.
 
 ## Milestone acceptance
 

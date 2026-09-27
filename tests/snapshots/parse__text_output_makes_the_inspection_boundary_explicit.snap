@@ -1,0 +1,6 @@
+---
+source: tests/parse.rs
+expression: "String::from_utf8(output.stdout).unwrap()"
+---
+a.md: kind=reference (configuration), sections=1, blocks=2, sentences=2
+Parsed 1 file(s). No lint rules were run.

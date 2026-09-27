@@ -9,7 +9,7 @@ import zipfile
 
 
 def verify(directory: Path, root: Path) -> None:
-    version = tomllib.loads((root / "Cargo.toml").read_text(encoding="utf-8"))["workspace"]["package"]["version"]
+    version = tomllib.loads((root / "Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]
     expected_license = (root / "LICENSE").read_text(encoding="utf-8").strip()
     distributions = sorted(directory.glob("*.whl")) + sorted(directory.glob("*.tar.gz"))
     if not distributions:
@@ -43,7 +43,7 @@ def verify(directory: Path, root: Path) -> None:
 
 def validate(metadata, prefix, read, version, expected_license):
     if metadata["Name"] != "seiso" or metadata["Version"] != version:
-        raise ValueError("Distribution name/version differs from the Cargo workspace")
+        raise ValueError("Distribution name/version differs from the Cargo package")
     licenses = metadata.get_all("License-File", [])
     if not licenses:
         raise ValueError("Distribution has no declared license file")

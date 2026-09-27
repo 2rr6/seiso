@@ -235,17 +235,19 @@ DUP 和 OWN 只在同一个比较域内比较。比较域 = 语言 × 配置的�
 6. 应用 suppression 并记录命中；只对能完整判定的 suppression 运行 SUP002。
 7. 按报告范围过滤、排序、输出；需要时生成安全修复。
 
-### crate 划分
+### 模块划分
 
-| crate | 职责 |
+项目使用一个 `seiso` Cargo package，包含库和 CLI；内部按模块划分职责。
+
+| 模块 | 职责 |
 | --- | --- |
-| `seiso_cli` | 命令行入口、子命令、输出渲染 |
-| `seiso_config` | 发现并合并配置：`seiso.toml`、`.seiso.toml`、`pyproject.toml` 的 `[tool.seiso]` |
-| `seiso_md` | 用 markdown-rs 解析，转成 seiso 文档模型 |
-| `seiso_index` | 构建全仓索引：合并内容事实与路径相关信息 |
-| `seiso_rules` | 规则实现、各语言词表、规则说明文档 |
-| `seiso_diagnostics` | 诊断、修复及其适用性（safe / unsafe）的数据结构 |
-| `seiso_cache` | 按内容 hash 缓存解析结果与内容事实 |
+| `main`、`commands` | 命令行入口、子命令、输出渲染 |
+| `config` | 发现并合并配置：`seiso.toml`、`.seiso.toml`、`pyproject.toml` 的 `[tool.seiso]` |
+| `md` | 用 markdown-rs 解析，转成 seiso 文档模型 |
+| `index` | 构建全仓索引：合并内容事实与路径相关信息 |
+| `rules` | 规则实现、各语言词表、规则说明文档 |
+| `diagnostics` | 诊断、修复及其适用性（safe / unsafe）的数据结构 |
+| `cache` | 按内容 hash 缓存解析结果与内容事实 |
 
 ### 文档模型
 

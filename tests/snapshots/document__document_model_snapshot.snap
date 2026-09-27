@@ -1,0 +1,219 @@
+---
+source: tests/document.rs
+expression: summary
+---
+{
+  "blocks": [
+    {
+      "checked": null,
+      "children": [],
+      "code_language": null,
+      "kind": "heading",
+      "ordered": null,
+      "parent": null,
+      "section": 1,
+      "sentences": [
+        0
+      ],
+      "span": {
+        "end": 37,
+        "start": 29
+      }
+    },
+    {
+      "checked": null,
+      "children": [],
+      "code_language": null,
+      "kind": "paragraph",
+      "ordered": null,
+      "parent": null,
+      "section": 1,
+      "sentences": [
+        1,
+        2
+      ],
+      "span": {
+        "end": 79,
+        "start": 39
+      }
+    },
+    {
+      "checked": null,
+      "children": [],
+      "code_language": null,
+      "kind": "html_comment",
+      "ordered": null,
+      "parent": null,
+      "section": 1,
+      "sentences": [],
+      "span": {
+        "end": 120,
+        "start": 81
+      }
+    }
+  ],
+  "comments": [
+    {
+      "content": " seiso: allow STL001 -- example ",
+      "span": {
+        "end": 120,
+        "start": 81
+      }
+    }
+  ],
+  "frontmatter": {
+    "canonical": null,
+    "errors": [],
+    "kind": "howto",
+    "lang": "zh",
+    "raw": "kind: howto\nlang: zh",
+    "span": {
+      "end": 28,
+      "start": 0
+    }
+  },
+  "links": [
+    {
+      "destination": "ref.md",
+      "destination_span": {
+        "end": 75,
+        "start": 69
+      },
+      "image": false,
+      "reference": null,
+      "span": {
+        "end": 76,
+        "start": 60
+      },
+      "title": null
+    }
+  ],
+  "sections": [
+    {
+      "blocks": [],
+      "children": [
+        1
+      ],
+      "depth": 0,
+      "heading": null,
+      "heading_span": null,
+      "parent": null,
+      "span": {
+        "end": 120,
+        "start": 0
+      }
+    },
+    {
+      "blocks": [
+        0,
+        1,
+        2
+      ],
+      "children": [],
+      "depth": 1,
+      "heading": "使用",
+      "heading_span": {
+        "end": 37,
+        "start": 29
+      },
+      "parent": 0,
+      "span": {
+        "end": 120,
+        "start": 29
+      }
+    }
+  ],
+  "sentences": [
+    {
+      "fragments": [
+        {
+          "kind": "text",
+          "span": {
+            "end": 37,
+            "start": 31
+          },
+          "text": "使用"
+        }
+      ],
+      "language": "zh",
+      "span": {
+        "end": 37,
+        "start": 31
+      }
+    },
+    {
+      "fragments": [
+        {
+          "kind": "text",
+          "span": {
+            "end": 46,
+            "start": 39
+          },
+          "text": "目前 "
+        },
+        {
+          "kind": "inline_code",
+          "span": {
+            "end": 54,
+            "start": 46
+          },
+          "text": "v1.2.3"
+        },
+        {
+          "kind": "text",
+          "span": {
+            "end": 57,
+            "start": 54
+          },
+          "text": "。"
+        }
+      ],
+      "language": "zh",
+      "span": {
+        "end": 57,
+        "start": 39
+      }
+    },
+    {
+      "fragments": [
+        {
+          "kind": "text",
+          "span": {
+            "end": 60,
+            "start": 57
+          },
+          "text": "见"
+        },
+        {
+          "kind": "link_text",
+          "span": {
+            "end": 67,
+            "start": 61
+          },
+          "text": "文档"
+        },
+        {
+          "kind": "link_destination",
+          "span": {
+            "end": 75,
+            "start": 69
+          },
+          "text": "ref.md"
+        },
+        {
+          "kind": "text",
+          "span": {
+            "end": 79,
+            "start": 76
+          },
+          "text": "。"
+        }
+      ],
+      "language": "zh",
+      "span": {
+        "end": 79,
+        "start": 57
+      }
+    }
+  ]
+}

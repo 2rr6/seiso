@@ -23,7 +23,7 @@ def digest(path):
 def build_probe():
     cargo = shutil.which("cargo") or str(Path.home() / ".cargo/bin" / ("cargo.exe" if os.name == "nt" else "cargo"))
     process = subprocess.run(
-        [cargo, "build", "--locked", "--release", "-p", "seiso_md", "--example", "corpus_probe", "--message-format=json"],
+        [cargo, "build", "--locked", "--release", "--example", "corpus_probe", "--message-format=json"],
         cwd=ROOT, capture_output=True,
     )
     if process.returncode:
@@ -37,11 +37,9 @@ def build_probe():
 
 def parser_sources():
     paths = [ROOT / "Cargo.toml", ROOT / "Cargo.lock", Path(__file__).resolve()]
-    for crate in ["seiso_md", "seiso_diagnostics"]:
-        directory = ROOT / "crates" / crate
-        paths.append(directory / "Cargo.toml")
-        paths.extend((directory / "src").rglob("*.rs"))
-    paths.extend((ROOT / "crates/seiso_md/examples").rglob("*.rs"))
+    paths.extend((ROOT / "src").rglob("*.rs"))
+    paths.extend((ROOT / "docs/rules").glob("*.md"))
+    paths.append(ROOT / "examples/corpus_probe.rs")
     return {path.relative_to(ROOT).as_posix(): digest(path) for path in sorted(paths)}
 
 

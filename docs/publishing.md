@@ -4,74 +4,138 @@ kind: howto
 
 # Publish seiso
 
-Cargo and PyPI use the package name `seiso`. npm uses `@scarletkc/seiso`.
-All three installations provide the `seiso` executable.
+Use [Build and publish distributions](../.github/workflows/publish.yml) to
+publish `seiso` on crates.io, `@scarletkc/seiso` on npm, `seiso` on PyPI, and
+a GitHub Release from one release commit. All three package installations
+provide the `seiso` executable. The workflow runs only through
+`workflow_dispatch`; all upload inputs default to false.
 
-The Cargo workspace version is the release authority. Keep the npm version
-in `npm/seiso/package.json` equal to it; the packaging script rejects mismatches.
-PyPI reads the version from Cargo through maturin.
+## Prepare the version and release notes
 
-## Validate the source packages
-
-```sh
-cargo test --workspace --locked
-cargo publish --workspace --dry-run --locked
-```
-
-Cargo publishes the CLI and its workspace library dependencies. Every crate
-ships an MIT license file copied from
-the repository license; keep those copies synchronized when changing it.
-
-## Build the installation packages
-
-Run the **Build and publish distributions** workflow in GitHub Actions with
-`publish_pypi` disabled. It builds and tests Linux x64 and Windows x64 wheels,
-a source archive, and an npm archive containing both executables. npm requires
-Node.js 18 or later. Source installations require a Rust toolchain.
-
-Download artifacts from that run:
+From the repository root, run:
 
 ```sh
-gh run download RUN_ID -p 'distributions-*' -p npm-package -D dist/downloaded
+python scripts/bump_version.py patch --note "Release title"
 ```
 
-The npm package has no install-time download or build step. Its native binaries
-come from the wheels, with version and checksum checks before packing.
+The version argument accepts `patch` (also the default), `minor`, `major`,
+or an explicit version such as `1.2.3` or `v1.2.3`. Add `--dry-run` to preview
+the affected files. The script rejects equal or lower versions, checks the
+existing versions for consistency, and plans all edits before writing.
 
-## Authorize publishing
+The script updates `package.version` in the root `Cargo.toml`, the `seiso`
+entry in `Cargo.lock`, and `npm/seiso/package.json`. Third-party dependency
+versions remain unchanged. clap reads the package version for the CLI's
+`--version`, and maturin reads it for PyPI. No separate CLI or Python version
+literal needs editing. Release versions use `MAJOR.MINOR.PATCH`; prerelease
+and build suffixes are rejected by the literal distribution-version checks.
 
-For crates.io, sign in with GitHub, verify your email, create an API token
-with permission to publish the crates, and pass it to `cargo login`.
+`--note` creates `docs/release-notes/VERSION.md` with a `## Release title`
+heading. Fill in its body with user-facing changes and migration instructions
+before committing. Existing notes are never overwritten. The note is optional,
+but a supplied file with an invalid heading or no body fails preflight.
 
-For npm, run `npm login` and complete the browser login. Verify the account
-with `npm whoami`.
-
-For PyPI, create a pending Trusted Publisher in your account's **Publishing**
-settings with these fields:
-
-| Field | Value |
-| --- | --- |
-| PyPI project | `seiso` |
-| GitHub owner | `scarletkc` |
-| Repository | `seiso` |
-| Workflow filename | `publish.yml` |
-| Environment | `pypi` |
-
-## Upload and verify
-
-Publish from the tested release commit. Cargo resolves workspace dependency
-order during publication:
+CI appends an automatic `Changelog` to the handwritten note. It lists commits
+from the nearest reachable previous version tag through the release commit,
+plus a full diff link. When no earlier version tag exists, it lists the full
+commit history. Preview the resulting body locally:
 
 ```sh
-cargo publish --workspace --locked
-npm publish PATH_TO_NPM_ARCHIVE --access public
+python scripts/github_release.py notes --output target/release-notes.md
 ```
 
-For PyPI, run the same GitHub workflow at the release commit with
-`publish_pypi` enabled. The publication job waits for the wheel and npm
-installation checks to pass.
+An existing `vVERSION` tag must point to the selected release commit; a
+conflicting tag fails preflight before any upload. Commit the version changes
+and completed note together, then validate that release ref.
 
-Verify each registry exposes the intended version, then install that exact
-version in a clean environment and run `seiso --version` and `seiso parse`.
-Registry publication alone does not establish the milestone's corpus
-acceptance criteria.
+## Validate and build without publishing
+
+Use Python 3.12 or later and current stable Rust:
+
+```sh
+python scripts/release.py check
+python -m unittest discover -s scripts -p 'test_*.py'
+cargo test --locked
+python scripts/release.py crates
+```
+
+The last command runs `cargo package --package seiso --locked --registry
+crates-io`, including compilation of the packaged sources without uploading. The package
+contains the CLI, library modules, embedded rule documentation, and MIT license.
+Already published versions are immutable; bump the version before releasing
+changed code.
+
+In GitHub Actions, select **Build and publish distributions → Run workflow**
+and choose the release branch or tag. Leave all `publish_*` checkboxes unchecked.
+
+The workflow checks version consistency and release notes, runs script and
+Rust tests, verifies the Cargo package, builds and exercises Linux x64 and
+Windows x64 wheels, creates a source archive, and packs and exercises the npm
+executable. Build jobs have no publishing secrets or OIDC permissions and do
+not enter publishing environments. Every upload waits for these checks.
+
+Download the artifacts and generated release body:
+
+```sh
+gh run download RUN_ID -p 'distributions-*' -p npm-package -p cargo-package -p release-notes -D dist/downloaded
+```
+
+The npm package requires Node.js 18 or later and contains both native binaries
+from the verified wheels, with version and checksum checks before packing.
+It has no install-time download or build step. Source installations require Rust.
+
+## Authentication
+
+The workflow uses these GitHub environments and credentials:
+
+| Destination | Environment | Authentication |
+| --- | --- | --- |
+| npm | `npm` | Trusted Publishing (OIDC), with direct `npm publish` allowed |
+| crates.io | `crates-io` | Trusted Publishing (OIDC) for `seiso` |
+| PyPI | `pypi` | Trusted Publishing (OIDC) |
+| GitHub Release | `github-release` | Built-in `GITHUB_TOKEN` with `contents: write` |
+
+Trusted Publisher configurations must match the repository, `publish.yml`,
+and the environment. Registry upload jobs alone receive `id-token: write`.
+Build jobs require no registry credentials. Environment deployment rules must
+permit the selected release ref.
+
+crates.io authentication uses a temporary token from
+`rust-lang/crates-io-auth-action`. No stored registry publishing token is needed.
+
+## Publish and recover a partial release
+
+Run the workflow at the tested release ref and enable **`publish_all`** to
+publish npm, crates.io, PyPI, and a GitHub Release in one run. For selected
+registries, leave it off and enable `publish_npm`, `publish_crates`, or the
+existing `publish_pypi`. These selections are additive and also create the
+GitHub Release after the selected uploads succeed. `publish_github` creates
+only the GitHub Release after build verification.
+
+The GitHub Release is named `seiso vVERSION`, tags the checked-out commit, and
+includes the generated body, wheels, source archive, npm archive, and the
+`seiso` crate archive. Registry uploads are independent after shared validation; a failure
+in one cannot roll back another. GitHub Release creation waits for all selected
+registries to succeed.
+
+Re-run the same release commit to finish a partial release, or select only the
+failed destination:
+
+- npm checks the exact package version and skips one that exists. A new version
+  uses the tested archive without repacking it.
+- crates.io checks the exact `seiso` version in its sparse index and skips an
+  existing version. Yanked versions stop the release.
+- PyPI retains `skip-existing: true` and uploads missing distribution files.
+- An existing GitHub Release keeps its body and assets; retrying uploads only
+  missing attachments. A draft release requires manual review before retrying.
+
+Only HTTP 404 means an absent registry resource. Network, authorization,
+rate-limit, malformed-response, and publication errors fail the job. If Cargo
+times out after uploading, check crates.io before retrying: the upload may have
+succeeded. Skipping a duplicate confirms the version exists; it does not prove
+its contents match changed local source.
+
+Verify each registry exposes the intended version, check the GitHub tag's
+commit and attachments, then install the exact version in a clean environment
+and run `seiso --version` and `seiso parse`. Registry publication alone does not
+establish the milestone's corpus acceptance criteria.
