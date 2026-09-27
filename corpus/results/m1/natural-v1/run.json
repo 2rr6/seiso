@@ -1,0 +1,46 @@
+{
+  "corpus_sha256": "3904c6c396606d13a21de7296624bfff99054f60d872cb4da6a346ddb80487cb",
+  "counts": {
+    "holdout": {
+      "KND001": 527,
+      "LNK001": 1191,
+      "PTR001": 5,
+      "STL001": 7
+    },
+    "tuning": {
+      "KND001": 1207,
+      "LNK001": 971,
+      "STL001": 1
+    }
+  },
+  "diagnostics": 3909,
+  "files": 1953,
+  "implementation": {
+    "Cargo.lock": "9d4867cdae17e4c82424fcb5228738dbbbec816663ec0b05edede74ab07c82ae",
+    "Cargo.toml": "740532af7332d236c4d15df42d0364a16737989419b764b619c30e62a99fad1b",
+    "crates/seiso_config/Cargo.toml": "21d77cc576f2439f3327cde437846d7bbbcde0adfc19030d30d98711c05741b7",
+    "crates/seiso_config/src/lib.rs": "7c7975b42d4652c4fd1a4199fecee7759c27a3eb6f918a42e2bf16ecf461ad63",
+    "crates/seiso_diagnostics/Cargo.toml": "2009504e9f83507047c1f8f23cc41884df9309296cea266596afd91e5371171b",
+    "crates/seiso_diagnostics/src/lib.rs": "af47a4090eb963d8284e17b10612561dd8397acbcf7c7dfc6f685dc921263605",
+    "crates/seiso_diagnostics/src/render.rs": "b174ab6a72dd917c3a73547261b4c46aa43edaec80b8d9f443ec8ed63dff3077",
+    "crates/seiso_diagnostics/src/source_map.rs": "b9b5a3afcf2c5fc3640925734b09caa931b17069651e5cc5797208daace81ba3",
+    "crates/seiso_md/Cargo.toml": "f3ee402218976360d0f160859df8a7ebda53fad3fdea608f7f4970a488a59bc2",
+    "crates/seiso_md/src/lib.rs": "3f394e697bd3debec07a074e68fbabc71dcbb704d0fe82bb045c910707d5cb6d",
+    "crates/seiso_md/src/mapping.rs": "d17e710b47d732ded169fbe3fe5969abefa0ab722832d8f2c861151da214503a",
+    "crates/seiso_md/src/parser.rs": "dfdd061d9b5f46f90242a0bf94921665878ae3e6e7304f5519ffed19f84902bb",
+    "crates/seiso_rules/Cargo.toml": "68ee708f319aa1ca671d0f0c200e3f4463244d3a07042a280e7a669e7afec2a9",
+    "crates/seiso_rules/examples/evaluate.rs": "25c4318532c631e1670527be860d13c8dfd406dff9a131d2584224b395edbae6",
+    "crates/seiso_rules/src/lib.rs": "93607129d648360dbf6381798281936ecca87034cc87ce4f23c85e50716c12bb",
+    "crates/seiso_rules/src/links.rs": "c923e52e73bba7489985d552bf3c610bc9d9ffc84c2dcf0b8c08399f0a9b5eda",
+    "crates/seiso_rules/src/normative.rs": "77510f4921f2b506af7a88052d2089870d198516d97f8d9d9c3559df7e2e211e",
+    "crates/seiso_rules/src/suppression.rs": "1b4c20e1feadd8d5589d0006b24d8501c20d45d1b9c4dcc0d6ac024dfaf1d18c",
+    "scripts/evaluate_m1.py": "0be45dde3a73573c3f617ad964d9a42b4c02cb1a08d77c6534f2747a476321b8"
+  },
+  "inventory_sha256": "8bb0be885bced01d9648b7eead154e349c477e19005d7ef5967f070cd3d9eba0",
+  "kind_profile_sha256": "7dee2a2ad65f77f5081da74046fec07e1e52ff5bb4110e96b53b8f2c541d7922",
+  "link_backend": "case-sensitive pinned Git trees; symlinks and submodules undetermined",
+  "probe_sha256": "cd2a0e30d0125661a8cf154e634796d445358b0aa769055585f1e8f27662cb6b",
+  "repeat_byte_identical": true,
+  "report_sha256": "f7b07d0c183a7468058777d0ce709c633136f0008f636dc2dc051527b2e7afe4",
+  "schema_version": 1
+}

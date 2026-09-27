@@ -1,0 +1,276 @@
+{
+  "schema_version": 1,
+  "corpus_lock_sha256": "3904c6c396606d13a21de7296624bfff99054f60d872cb4da6a346ddb80487cb",
+  "sources": [
+    {
+      "id": "codex",
+      "repository": "openai/codex",
+      "commit": "88235f881d4e222cf779df785e747d8c8b935768",
+      "tree": "ea415fe9873ad9cfa4f987039e1b8aa7069c9e7a",
+      "archive": "codex.json.gz",
+      "sha256": "2bbb352acbbfe3f395644e3443c7c690ffb8cecfb9e9cfb18ddbf2b3a96b5674",
+      "entries": 9672
+    },
+    {
+      "id": "claude-code",
+      "repository": "anthropics/claude-code",
+      "commit": "7779afb12e3635f46f56ec823979d68350ae000b",
+      "tree": "226c92908550d05933728e994a003cbd41a9eb76",
+      "archive": "claude-code.json.gz",
+      "sha256": "253c0fc8056702c823cbc5d18718ff27062da40d420883e422059c375ed5d912",
+      "entries": 1980
+    },
+    {
+      "id": "aider",
+      "repository": "Aider-AI/aider",
+      "commit": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c",
+      "tree": "3a8257195db51e5c5cd3680dfd2022027f9c7904",
+      "archive": "aider.json.gz",
+      "sha256": "815420369030a1dbb364143ae763696f656aa3a82d99badb2ef1412ce948c5f2",
+      "entries": 780
+    },
+    {
+      "id": "cline",
+      "repository": "cline/cline",
+      "commit": "252082b9e93b4f91253876391e35b4c13326f5e6",
+      "tree": "ce0c308619b99668ab9194af300588fdd63837a5",
+      "archive": "cline.json.gz",
+      "sha256": "8c7b9c3d869d43c80fc7b648e5dfa45992c31ebc4530fed99f0fdbca6efef3e2",
+      "entries": 4850
+    },
+    {
+      "id": "roo-code",
+      "repository": "RooCodeInc/Roo-Code",
+      "commit": "b867ec9145750d0ae1ff7f02d35406e9bf2a0b16",
+      "tree": "18f0b9ac1ac2cac80aae29b51531cd862b3b03eb",
+      "archive": "roo-code.json.gz",
+      "sha256": "90b1506ff70cfa9e0e5013d33183d70b4e8688c85d2e447ed01f540182d80f66",
+      "entries": 3573
+    },
+    {
+      "id": "gemini-cli",
+      "repository": "google-gemini/gemini-cli",
+      "commit": "2fe7c2d3f065dc40ad573d50b2091116f8a4aa18",
+      "tree": "040ee6263a64216d63eb47b08222ccedcb99687e",
+      "archive": "gemini-cli.json.gz",
+      "sha256": "2c4b79707e054bdc840d8437d3b0dbd77320319952d5aa879361037121c839cc",
+      "entries": 3315
+    },
+    {
+      "id": "spec-kit",
+      "repository": "github/spec-kit",
+      "commit": "c00dc0551583428a10a94443c58c6a41e5e0138c",
+      "tree": "43faa4fa162d72be1730f5f1fee250fefadb24dc",
+      "archive": "spec-kit.json.gz",
+      "sha256": "210069c6eb7760bbc56d2deb67a6ac0987b76ec4110ac7a2c07efa70991a7b9d",
+      "entries": 1012
+    },
+    {
+      "id": "anthropic-skills",
+      "repository": "anthropics/skills",
+      "commit": "33375500bcea98d610eb30ce10ac4e59b89c390d",
+      "tree": "50c0bb21e343ef9a3d27add929a2b1dda635fd43",
+      "archive": "anthropic-skills.json.gz",
+      "sha256": "70d5aebfd820420cec77536c7f699ceb39cec80bff13133a0131b37ffa486a00",
+      "entries": 511
+    },
+    {
+      "id": "pydantic-ai",
+      "repository": "pydantic/pydantic-ai",
+      "commit": "69eb81bde23c8db52ee8617217bdaf46bf0468df",
+      "tree": "95e8af941cc61a523df1d22d4ad5013ff53421d7",
+      "archive": "pydantic-ai.json.gz",
+      "sha256": "8b65f2fad0cbb783fed098cce0e985a661f3158d8d024c1767dfb9023f548ff1",
+      "entries": 4161
+    },
+    {
+      "id": "langgraph",
+      "repository": "langchain-ai/langgraph",
+      "commit": "7daa3ab49d678a5da75edb08baa87db4a2be52c3",
+      "tree": "b0d7e35c1e36298d452ebfe5b544eab360cc7661",
+      "archive": "langgraph.json.gz",
+      "sha256": "86d9c2cfc1926a90afb26f07f2cf9c12f49df83dbc6f20180256b6b5c3b8817f",
+      "entries": 834
+    },
+    {
+      "id": "autogen",
+      "repository": "microsoft/autogen",
+      "commit": "027ecf0a379bcc1d09956d46d12d44a3ad9cee14",
+      "tree": "0cec8faf5dfc9692b004d62955d42477a2935204",
+      "archive": "autogen.json.gz",
+      "sha256": "1b52b8dddbb4ae34de576c1bb1b6c86876a9312f04c53f762a8fcd5331a1fd59",
+      "entries": 2319
+    },
+    {
+      "id": "goose",
+      "repository": "aaif-goose/goose",
+      "commit": "04ed836c8cde23e540cc77d256992e00be99298b",
+      "tree": "8a8d246e0eea892ff3c9422f1406c6a46e644ac3",
+      "archive": "goose.json.gz",
+      "sha256": "8f13e2183d82c9c0137fd7da79334ad926fd1453d3645bd2fac6f7ee58bccfa1",
+      "entries": 3021
+    },
+    {
+      "id": "opencode",
+      "repository": "anomalyco/opencode",
+      "commit": "b471c2b4495747353af768fbf2e0790c9d820ce2",
+      "tree": "24f29b6db42c161ce7b854e79781d8cd294ab3ae",
+      "archive": "opencode.json.gz",
+      "sha256": "5cea912886a7064f71296fbf3deb33b9b624ed0eb990b8b36a566e7b3c260e62",
+      "entries": 7411
+    },
+    {
+      "id": "ruff",
+      "repository": "astral-sh/ruff",
+      "commit": "a1f59fb6a3cde0a810c85e038a92ca8f10c21f57",
+      "tree": "c9f43e54bbd915564e3d73360c38fe8fdeaf21ae",
+      "archive": "ruff.json.gz",
+      "sha256": "80174db88366a7b3ff508540883429c34ac1d3e99bceaeea6a3277e9932f54c1",
+      "entries": 12064
+    },
+    {
+      "id": "uv",
+      "repository": "astral-sh/uv",
+      "commit": "136ef97330781a0f5f2be6613aac4382ebbcecea",
+      "tree": "6759b66c622e8eca108fa3c240d7ddc4bc82ab14",
+      "archive": "uv.json.gz",
+      "sha256": "6fd02d48c8dd89dc6b2f6dee394e3b4e05b572fa5bc267b745347b3ac9aa46df",
+      "entries": 2250
+    },
+    {
+      "id": "ripgrep",
+      "repository": "BurntSushi/ripgrep",
+      "commit": "3fce3b5bb0236da2df6d99672afb8a719642eca7",
+      "tree": "856ed9162d23416ee7dc5f4389975b54ca062f60",
+      "archive": "ripgrep.json.gz",
+      "sha256": "56c21b1e481d48e1c688df8a9c3cdcbd3b27b830bcf79157248aeba7057a3aa3",
+      "entries": 299
+    },
+    {
+      "id": "bat",
+      "repository": "sharkdp/bat",
+      "commit": "4987f76709aae3a1c4db723c53874c9ddcb0c4fd",
+      "tree": "c462271cc24d2c5657acd580085746a6b6554cfb",
+      "archive": "bat.json.gz",
+      "sha256": "51c453121c26c2ba4d0d738e01cb60054d25a386711cec008cfe6283cedb3773",
+      "entries": 1383
+    },
+    {
+      "id": "fd",
+      "repository": "sharkdp/fd",
+      "commit": "ce97e473ebaec49697c07daa50a7bc2b32f713d2",
+      "tree": "ac4f4bb79bbb2aedbb6e2a2d50b09695798fb818",
+      "archive": "fd.json.gz",
+      "sha256": "e4a1b670f0d08dc71814003cee10129d6ea21a55cb9382b9f06065f92f866829",
+      "entries": 74
+    },
+    {
+      "id": "nushell",
+      "repository": "nushell/nushell",
+      "commit": "2459fdd134ea4fdbae42efd6924e2b41201cf363",
+      "tree": "9dfebb6a0ddb4e745ecc38236d1e6e2656cae390",
+      "archive": "nushell.json.gz",
+      "sha256": "9a86b0b64e875151a4d09bbffcdce207046011edcbbc6e6fa4159d49866960ce",
+      "entries": 3059
+    },
+    {
+      "id": "mdbook",
+      "repository": "rust-lang/mdBook",
+      "commit": "ea1b91d0ea1fa2d62e4c1faeeffd910ce19306fd",
+      "tree": "fd85ba3939ede4bfa1945fe2c6d4d1809e51010b",
+      "archive": "mdbook.json.gz",
+      "sha256": "4f4c0119f4b488a620055576201ec8666c353b9fca96335992f9824445fe9633",
+      "entries": 972
+    },
+    {
+      "id": "vue-zh",
+      "repository": "vuejs-translations/docs-zh-cn",
+      "commit": "dda601fe33187dfd913641d58b6cefe829bf1a0d",
+      "tree": "3da1a1ab27e1f7b056529424d7382acf6b57b0eb",
+      "archive": "vue-zh.json.gz",
+      "sha256": "45c491f6a498971b0e45435b7ba6f9aebe876c6c41c190dc290e556b8caa341f",
+      "entries": 723
+    },
+    {
+      "id": "rust-book-zh",
+      "repository": "rust-lang-cn/book-cn",
+      "commit": "cde74c448e301ce8ac7960a0d3dc879efd83635d",
+      "tree": "99965d56652ceee04709227db017f6f4afd5ade6",
+      "archive": "rust-book-zh.json.gz",
+      "sha256": "1f09bc0fc3617cb18d9d9d26e0e1de98f5ff79b248141b2bc5dc20effd6b24ae",
+      "entries": 6437
+    },
+    {
+      "id": "frp-zh",
+      "repository": "fatedier/frp",
+      "commit": "d20a232996007dfe6ab425abc0a39a3ae9a0889b",
+      "tree": "16a04b713ddab0f0581106b43f62a2bd08b9731f",
+      "archive": "frp-zh.json.gz",
+      "sha256": "08ee34e1aea99db1cac3902dc5cd56196dee9c776ea01817d947f8eb33555915",
+      "entries": 672
+    },
+    {
+      "id": "oi-wiki",
+      "repository": "OI-wiki/OI-wiki",
+      "commit": "387fb8d05a4a27d42cdee612a7f37786d4d0fed4",
+      "tree": "2db909dbbc337c03b1090e1bca29539de289247e",
+      "archive": "oi-wiki.json.gz",
+      "sha256": "d3c2e4e1149ff58c48f81cb8418fda01d445b4da57728875c3a4815a56016c7b",
+      "entries": 3405
+    },
+    {
+      "id": "advanced-java",
+      "repository": "doocs/advanced-java",
+      "commit": "1a35221e471fa3adf8997895268fd18b36f27c01",
+      "tree": "35ec14591fc1ecae7b53d80fd935f6a027f1b1d5",
+      "archive": "advanced-java.json.gz",
+      "sha256": "eb701763097dceadbdebec6d0134ce8ffc272d3474244a6e286958c2278cc7d7",
+      "entries": 315
+    },
+    {
+      "id": "rust-book-ja",
+      "repository": "rust-lang-ja/book-ja",
+      "commit": "5092e5395bf32a65b277c3b1cc1a81ba288c7d46",
+      "tree": "46fc158244cbe6af0fe6e98bf1dec1d4f21c7dd8",
+      "archive": "rust-book-ja.json.gz",
+      "sha256": "6bf9659b7b63f5ee45cd0cc9fadb17e6337f05368eac80325f34720e50b1662a",
+      "entries": 3349
+    },
+    {
+      "id": "vue-ja",
+      "repository": "vuejs-translations/docs-ja",
+      "commit": "edc1273e61d3f46668bd78b29d18ef04adcf5138",
+      "tree": "0282910359eea4048fc91fce2dff85d911032f64",
+      "archive": "vue-ja.json.gz",
+      "sha256": "d3c7810cc2efa19a9b11ad787ca618b37ab6a8902825c5490c09343fb5e58c68",
+      "entries": 675
+    },
+    {
+      "id": "rust-examples-ja",
+      "repository": "rust-lang-ja/rust-by-example-ja",
+      "commit": "d9ed1fd0a6279f8fd06d434e7176f5f8845c3156",
+      "tree": "eeb45f0df430d91e356eff5c10b8f11f99fe4886",
+      "archive": "rust-examples-ja.json.gz",
+      "sha256": "ced41fa393162ab585f5e57ee79334e8daccb4ae10690f2b31fe69e0c4517047",
+      "entries": 1034
+    },
+    {
+      "id": "js-primer",
+      "repository": "js-primer/js-primer",
+      "commit": "b4f2bb04dce74868c46e73a8fd9842c67ab24e49",
+      "tree": "0f5670a9d0c7c53118cc0eab453281ceac5c7e75",
+      "archive": "js-primer.json.gz",
+      "sha256": "00503b8f5976300ebddda8d1bb324027abd685b83077646f73c218af12f5a691",
+      "entries": 916
+    },
+    {
+      "id": "generative-ai-ja",
+      "repository": "microsoft/generative-ai-for-beginners",
+      "commit": "d8ec07e31c4b32bd283d565c1abd9b58bb5cf2e8",
+      "tree": "10517f0ae9f8a47249dae1741acf52d9fb4db2ff",
+      "archive": "generative-ai-ja.json.gz",
+      "sha256": "f78dc0d5da4950fdce8ee3b5afb9b72cb2327c672910a61ce2448630e3e3af0a",
+      "entries": 13258
+    }
+  ]
+}

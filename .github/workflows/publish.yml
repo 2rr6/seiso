@@ -41,6 +41,9 @@ jobs:
         run: |
           python -m pip install dist/*.whl
           seiso --version
+          seiso rule KND001
+          seiso check README.md --select KND --output-format json > checked.json
+          python -c "import json; assert json.load(open('checked.json', encoding='utf-8')) == []"
           seiso parse README.md --output-format json > parsed.json
           python -c "import json; r=json.load(open('parsed.json', encoding='utf-8')); assert len(r['files']) == 1 and not r['errors']"
       - if: runner.os == 'Linux'
@@ -78,6 +81,9 @@ jobs:
       - name: Exercise the packed npm executable
         run: |
           npm exec --yes --package ./dist/*.tgz -- seiso --version
+          npm exec --yes --package ./dist/*.tgz -- seiso rule KND001
+          npm exec --yes --package ./dist/*.tgz -- seiso check README.md --select KND --output-format json > checked.json
+          python -c "import json; assert json.load(open('checked.json', encoding='utf-8')) == []"
           npm exec --yes --package ./dist/*.tgz -- seiso parse README.md --output-format json > parsed.json
           python -c "import json; r=json.load(open('parsed.json', encoding='utf-8')); assert len(r['files']) == 1 and not r['errors']"
       - uses: actions/upload-artifact@v4

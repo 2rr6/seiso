@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-09-27T16:11:58.810945+00:00",
+  "status": "accepted",
+  "approval": {
+    "authority": "project_owner",
+    "date": "2026-09-28",
+    "decision": "Accept protocol-conformance promotion criterion for KND002, SUP001, and SUP002 only.",
+    "record": "docs/evaluation/m1-gate-proposal.md"
+  },
+  "approved_rules": [
+    "KND002",
+    "SUP001",
+    "SUP002"
+  ],
+  "criteria": {
+    "protocol_matrix": "positive and negative cases, malformed input, scope priority, disabled and incomplete execution, meta-suppression, deterministic complete results, exact original-source locations, and executable rule examples",
+    "natural_regression": "No unwanted diagnostics on the unmodified natural holdout. Complete rule-evaluation receipt must confirm this before promotion.",
+    "natural_precision": null,
+    "natural_precision_status": "unavailable_no_natural_trigger_candidates",
+    "constructed_cases_count_toward_natural_precision": false,
+    "unchanged_natural_precision_rules": [
+      "KND001",
+      "LNK001",
+      "STL001",
+      "STL003",
+      "PTR001",
+      "PTR003",
+      "RAT002",
+      "VOX001"
+    ],
+    "unchanged_natural_precision_minimum_labeled_diagnostics_per_rule": 100,
+    "unchanged_natural_precision_minimum": 0.95
+  },
+  "syntax_audit": {
+    "path": "corpus/results/m1/syntax-audit.json",
+    "sha256": "2a8ada99894fd28fd2196fcd0c490b2073b90268139543283b778bb23122851f",
+    "corpus_lock_sha256": "3904c6c396606d13a21de7296624bfff99054f60d872cb4da6a346ddb80487cb",
+    "holdout_documents": 662,
+    "holdout_kind_declarations": 0,
+    "holdout_seiso_markers": 0
+  },
+  "review": {
+    "matrix": "docs/evaluation/m1-gate-proposal.md#conformance-matrix",
+    "open_protocol_fixture_gaps": [],
+    "scope_priority": "Reviewed the production match ordering: block before file, smaller block before wider block, then earlier source position. Tests assert exactly one active winner and the other declaration stale.",
+    "meta_suppression": "Reviewed separate first-order stale matching and final unused SUP002 pass. Tests assert equal file SUP002 declarations cannot give each other circular credit.",
+    "incomplete_execution": "Existing fixtures assert incomplete rules can suppress known diagnostics without being reported stale; disabled rules receive no stale diagnostic."
+  },
+  "validation": {
+    "date": "2026-09-28",
+    "platform": "Windows",
+    "command": "cargo test -p seiso_rules --test engine --test suppression --test acceptance_contract --locked",
+    "exit_code": 0,
+    "tests": {
+      "engine": 7,
+      "suppression": 14,
+      "acceptance_contract": 6
+    },
+    "passed": 27,
+    "failed": 0,
+    "unix_only_tests_executed": false,
+    "result": "passed"
+  },
+  "source_sha256": {
+    "crates/seiso_rules/tests/engine.rs": "8130c49e70c57814f08f653a18ded0e1280e4bee38e05828ce13645ea5779592",
+    "crates/seiso_rules/tests/suppression.rs": "b653bbb22accaf804b34f4bc1fafb6b5445a55b3e2d127f79718d291f7deddff",
+    "crates/seiso_rules/tests/acceptance_contract.rs": "55d03185f83d0911bb870fd2108d5280d80cca2381209ffa93f52c5d2a6759df",
+    "crates/seiso_rules/src/lib.rs": "25f5dd855ce172d220cef83f8a4e03d0277aafa99e0782621268f1dfbae8b9af",
+    "crates/seiso_rules/src/suppression.rs": "1b4c20e1feadd8d5589d0006b24d8501c20d45d1b9c4dcc0d6ac024dfaf1d18c"
+  },
+  "promotion_applied": true,
+  "owner_approved": true,
+  "approval_date": "2026-09-28",
+  "conformance_passed": true,
+  "natural_precision": null,
+  "syntax_audit_sha256": "2a8ada99894fd28fd2196fcd0c490b2073b90268139543283b778bb23122851f",
+  "test_sources": {
+    "crates/seiso_rules/tests/engine.rs": "8130c49e70c57814f08f653a18ded0e1280e4bee38e05828ce13645ea5779592",
+    "crates/seiso_rules/tests/suppression.rs": "b653bbb22accaf804b34f4bc1fafb6b5445a55b3e2d127f79718d291f7deddff",
+    "crates/seiso_rules/tests/acceptance_contract.rs": "55d03185f83d0911bb870fd2108d5280d80cca2381209ffa93f52c5d2a6759df"
+  },
+  "natural_regression_verification": "The M1 aggregate evaluation verifies zero unwanted natural holdout diagnostics against its frozen diagnostic report before promotion."
+}

@@ -21,7 +21,9 @@ ignore.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 seiso_config.workspace = true
+seiso_diagnostics.workspace = true
 seiso_md.workspace = true
+seiso_rules.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

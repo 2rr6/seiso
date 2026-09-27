@@ -1,0 +1,6 @@
+- id: seiso
+  name: seiso
+  description: Check Markdown documentation conventions.
+  entry: seiso check
+  language: python
+  types: [markdown]

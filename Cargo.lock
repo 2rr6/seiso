@@ -398,6 +398,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
+name = "regex"
+version = "1.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f020237b6c8eed93db2e2cb53c00c60a8e1bc73da7d073199a1180401450218d"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-automata",
+ "regex-syntax",
+]
+
+[[package]]
 name = "regex-automata"
 version = "0.4.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -450,7 +462,9 @@ dependencies = [
  "ignore",
  "insta",
  "seiso_config",
+ "seiso_diagnostics",
  "seiso_md",
+ "seiso_rules",
  "serde",
  "serde_json",
  "tempfile",
@@ -488,6 +502,21 @@ dependencies = [
  "serde_yaml_ng",
  "sha2",
  "thiserror",
+]
+
+[[package]]
+name = "seiso_rules"
+version = "0.0.0"
+dependencies = [
+ "insta",
+ "regex",
+ "seiso_config",
+ "seiso_diagnostics",
+ "seiso_md",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
 ]
 
 [[package]]

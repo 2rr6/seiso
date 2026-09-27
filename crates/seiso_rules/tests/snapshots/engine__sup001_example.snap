@@ -1,0 +1,27 @@
+---
+source: crates/seiso_rules/tests/engine.rs
+expression: result.diagnostics
+---
+[
+  {
+    "code": "SUP001",
+    "message": "Invalid suppression: `LNK` is not a known full rule code",
+    "filename": "docs/guide.md",
+    "location": {
+      "row": 1,
+      "column": 1
+    },
+    "end_location": {
+      "row": 1,
+      "column": 62
+    },
+    "byte_range": {
+      "start": 0,
+      "end": 61
+    },
+    "fix": null,
+    "url": null,
+    "related": [],
+    "suggestion": "Use `<!-- seiso: allow CODE -- reason -->` before a block or inside a paragraph, list item, or table cell; put `allow-file` before the first content block."
+  }
+]

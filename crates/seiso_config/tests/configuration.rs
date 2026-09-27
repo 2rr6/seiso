@@ -381,10 +381,13 @@ fn cli_select_replaces_and_extend_select_appends() {
 }
 
 #[test]
-fn every_rule_is_preview_until_evaluated() {
+fn accepted_consistency_rules_are_default_and_other_rules_require_preview() {
     let (_dir, config) = parse("");
     assert_eq!(RULE_CODES.len(), 27);
-    assert!(rules(&config, Some("howto"), &CliOverrides::default()).is_empty());
+    assert_eq!(
+        rules(&config, Some("howto"), &CliOverrides::default()),
+        ["KND001", "KND002", "LNK001", "SUP001", "SUP002"]
+    );
     let preview = rules(
         &config,
         Some("howto"),

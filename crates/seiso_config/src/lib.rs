@@ -14,6 +14,8 @@ pub const RULE_CODES: [&str; 27] = [
     "ORD001", "ORD002", "MIX001", "VOX001", "VOX002", "VOX003", "EVD001", "SUP001", "SUP002",
 ];
 
+pub const STABLE_RULE_CODES: [&str; 5] = ["KND001", "KND002", "LNK001", "SUP001", "SUP002"];
+
 pub const KINDS: [&str; 8] = [
     "readme",
     "howto",
@@ -134,6 +136,12 @@ pub struct PtrSettings {
 #[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Lexicon {
     pub extend_stale_markers: Vec<String>,
+    pub extend_constraint_markers: Vec<String>,
+    pub extend_commit_contexts: Vec<String>,
+    pub extend_pointer_markers: Vec<String>,
+    pub extend_source_pointers: Vec<String>,
+    pub extend_rationale_headings: Vec<String>,
+    pub extend_conversation_markers: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -280,7 +288,7 @@ impl Config {
             .map(|(_, entry)| entry.name.as_str())
     }
 
-    /// All registered rules remain preview until their precision has been evaluated.
+    /// Apply selection and applicability before exposing accepted or opt-in rules.
     pub fn enabled_rules(
         &self,
         path: &Path,
@@ -288,7 +296,7 @@ impl Config {
         overrides: &CliOverrides,
     ) -> Result<Vec<&'static str>, ConfigError> {
         overrides.validate()?;
-        if !(self.settings.preview || overrides.preview) || kind == Some("generated") {
+        if kind == Some("generated") {
             return Ok(Vec::new());
         }
         let select = overrides
@@ -299,6 +307,9 @@ impl Config {
         let relative_path = self.relative_path(path);
         let mut enabled: Vec<_> = RULE_CODES
             .into_iter()
+            .filter(|code| {
+                self.settings.preview || overrides.preview || STABLE_RULE_CODES.contains(code)
+            })
             .filter(|code| {
                 let selected = selectors.iter().filter_map(|s| specificity(s, code)).max();
                 let ignored = self
@@ -499,15 +510,30 @@ fn validate_settings(settings: &Settings, path: &Path) -> Result<(), ConfigError
         }
     }
     for lexicon in settings.lint.lexicon.values() {
-        if lexicon
-            .extend_stale_markers
-            .iter()
-            .any(|s| s.trim().is_empty())
-        {
-            return Err(invalid(
-                path,
-                "lint.lexicon extend-stale-markers entries must not be empty",
-            ));
+        for (name, entries) in [
+            ("extend-stale-markers", &lexicon.extend_stale_markers),
+            (
+                "extend-constraint-markers",
+                &lexicon.extend_constraint_markers,
+            ),
+            ("extend-commit-contexts", &lexicon.extend_commit_contexts),
+            ("extend-pointer-markers", &lexicon.extend_pointer_markers),
+            ("extend-source-pointers", &lexicon.extend_source_pointers),
+            (
+                "extend-rationale-headings",
+                &lexicon.extend_rationale_headings,
+            ),
+            (
+                "extend-conversation-markers",
+                &lexicon.extend_conversation_markers,
+            ),
+        ] {
+            if entries.iter().any(|entry| entry.trim().is_empty()) {
+                return Err(invalid(
+                    path,
+                    format!("lint.lexicon {name} entries must not be empty"),
+                ));
+            }
         }
     }
     Ok(())

@@ -41,3 +41,27 @@ load or execute source-repository configuration or code.
 
 See the [M0 acceptance record](evaluation/m0-2026-09-27.md) for the initial
 run. Parser acceptance does not measure rule precision or performance.
+
+For rule precision and promotion, follow the
+[single-file evaluation procedure](../corpus/docs/evaluation.md).
+
+## Exercise the rule engine
+
+After fetching the corpus, run the optional rule-engine robustness test:
+
+```sh
+cargo test -p seiso_rules --test corpus --locked -- --ignored --nocapture
+```
+
+The test verifies each locked document's byte size and SHA-256, then checks
+the unchanged source twice under each of two policies: its declared kind,
+and a synthetic `howto` path mapping. The synthetic mapping exercises
+convention rules; it does not assign human genre labels. Frontmatter still
+takes precedence in both policies. Diagnostics and suppression records must
+be byte-identical between checks, with valid source spans and coordinates.
+
+`LNK001` is excluded because the blob cache does not contain complete
+upstream file trees. Its filesystem behavior is covered by the
+[engine fixtures](../crates/seiso_rules/tests/engine.rs). This test reports
+execution and diagnostic counts, not precision, and leaves the M0 acceptance
+artifacts unchanged. Missing or modified corpus files fail the test.

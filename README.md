@@ -38,16 +38,18 @@ machine-written, and it leaves formatting and spelling to other tools. The
 
 ## Try it
 
-`seiso parse` inspects the document model and configuration resolution.
-Lint rules and `seiso check` are not available yet.
-See [development](https://github.com/scarletkc/seiso/blob/main/docs/development.md)
-for the implementation boundary and validation commands.
+Run the linter from a source checkout:
 
 ```sh
-cargo run -p seiso -- parse README.md
-cargo run -p seiso -- parse --output-format json
+cargo run -p seiso -- check README.md
+cargo run -p seiso -- rule KND001
 ```
 
-Run `cargo run -p seiso -- parse --help` for available options.
+Default checks use accepted stable rules; `--preview` adds selected preview
+rules. See [checking documents](https://github.com/scarletkc/seiso/blob/main/docs/checking.md)
+for configuration and output, [integrations](https://github.com/scarletkc/seiso/blob/main/docs/integrations.md)
+for editor hooks and pre-commit, and [development](https://github.com/scarletkc/seiso/blob/main/docs/development.md)
+for validation commands. `seiso parse` inspects the document model without
+running rules.
 
 Licensed under [MIT](https://github.com/scarletkc/seiso/blob/main/LICENSE).

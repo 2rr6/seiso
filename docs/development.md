@@ -1,11 +1,11 @@
 # Development
 
-The Cargo workspace implements the local M0 foundation described in the
+The Cargo workspace follows the
 [implementation plan](seiso%20设计与实施方案.md#实施路线图). `seiso_md` owns
 content-derived document data, `seiso_config` owns configuration and path
 policy, `seiso_diagnostics` owns source locations and diagnostic rendering,
-and the `seiso` package in `crates/seiso_cli` joins them in the `seiso parse`
-inspection command.
+`seiso_rules` owns rule execution and suppression state, and the `seiso`
+package in `crates/seiso_cli` joins them in the command-line interface.
 
 ## Build and validate
 
@@ -23,6 +23,20 @@ structure; configuration precedence and inheritance; diagnostic snapshots;
 and repeatable CLI output. Snapshot changes are reviewed as ordinary Git
 diffs. `INSTA_UPDATE=always cargo test --workspace` regenerates snapshots
 when an output change is intentional.
+
+With Python 3.12 or later, check packaging and corpus tools:
+
+```sh
+python -m unittest discover -s scripts -p 'test_*.py'
+python -m unittest discover -s corpus -p 'test_*.py'
+python -m unittest discover -s corpus/evaluation -p 'test_*.py'
+```
+
+Rule explanations live in [the rules crate](../crates/seiso_rules/docs/).
+Their positive and negative Markdown examples execute as tests; positive
+diagnostics are stored in snapshots. Add regression cases for fragment
+boundaries, languages, source mappings, and suppression scope when changing
+a rule. Use the [checking guide](checking.md) to exercise the CLI.
 
 ## Inspect documents
 
@@ -44,7 +58,7 @@ does not need to exist, and its contents are never written to disk.
 
 The document model records frontmatter errors as content facts. A failed
 frontmatter declaration has no effective kind, even if a path mapping exists.
-The forthcoming KND rules will turn these facts into lint diagnostics.
+The KND rules turn these facts into lint diagnostics during checking.
 
 ## Parser boundaries
 
@@ -68,7 +82,8 @@ to repeat it against parser changes. Rule precision and performance are
 evaluated separately under the implementation plan's later gates. See
 [publishing](publishing.md) for the packaging and release procedure.
 
-The rule engine, suppression evaluation, repository index, parse cache,
-and integrations follow the plan's later milestones.
-All rule metadata remains preview until the required evaluation establishes
-eligibility for stable status.
+The [M1 acceptance record](evaluation/m1-2026-09-28.md) records the rule-level
+decisions, natural precision results, and accepted protocol exceptions.
+Default checks use stable rules; normative rules remain opt-in until their
+own evidence permits promotion. Repository indexing, parse caching, and safe
+fixes follow the plan's later milestones.

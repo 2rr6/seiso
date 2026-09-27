@@ -24,5 +24,8 @@ See [selection and licensing](docs/selection.md) for the corpus contract,
 [updating sources](docs/updating.md) for snapshot maintenance, and
 [M0 acceptance](results/m0/acceptance.json) for the initial verification.
 
+Use the [rule evaluation procedure](docs/evaluation.md) for kind profiles,
+complete file inventories, diagnostic review, and promotion decisions.
+
 The [MIT license](../LICENSE) covers this directory's scripts and metadata.
 Upstream documents retain their original licenses.

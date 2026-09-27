@@ -1,0 +1,496 @@
+{
+  "annotation_method": "Agent review with independent consistency oracles; no human labels claimed.",
+  "annotations": {
+    "labels-content.json": "cda9c61bbd776eb192288ca3b844590a1ca3968fe4ec41db3215dbcb2498d134",
+    "labels-links.json": "74b1eeb3a4f13ca6ac5ebd69d9a337e3eda516c22d7d54b0a63b3fe0c8b537b3"
+  },
+  "diagnostics_annotated": 3909,
+  "effective_kind_coverage": {
+    "changelog": 1,
+    "howto": 106,
+    "readme": 16,
+    "reference": 96,
+    "unknown": 1734
+  },
+  "m1_exit_passed": true,
+  "protocol_exception_accepted": true,
+  "protocol_receipt_sha256": "2facc58a032bf12b42098d10d621de0b9159bdc257bf2e4f8df9b3a96ffb0d9a",
+  "report_sha256": "f7b07d0c183a7468058777d0ce709c633136f0008f636dc2dc051527b2e7afe4",
+  "rules": {
+    "KND001": {
+      "acceptance_route": "natural_holdout",
+      "decision": "stable",
+      "eligible_for_stable": true,
+      "holdout": {
+        "by_language_and_kind": {
+          "en/unknown": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 219,
+            "tp": 219,
+            "uncertain": 0
+          },
+          "ja/unknown": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 119,
+            "tp": 119,
+            "uncertain": 0
+          },
+          "zh/unknown": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 189,
+            "tp": 189,
+            "uncertain": 0
+          }
+        },
+        "conservative_precision": 1.0,
+        "fp": 0,
+        "individually_reviewed_by_agent": 120,
+        "precision": 1.0,
+        "samples": 527,
+        "tp": 527,
+        "uncertain": 0
+      },
+      "tuning": {
+        "by_language_and_kind": {
+          "en/unknown": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 686,
+            "tp": 686,
+            "uncertain": 0
+          },
+          "ja/unknown": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 372,
+            "tp": 372,
+            "uncertain": 0
+          },
+          "zh/unknown": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 149,
+            "tp": 149,
+            "uncertain": 0
+          }
+        },
+        "conservative_precision": 1.0,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": 1.0,
+        "samples": 1207,
+        "tp": 1207,
+        "uncertain": 0
+      }
+    },
+    "KND002": {
+      "acceptance_route": "protocol_conformance",
+      "decision": "stable",
+      "eligible_for_stable": true,
+      "holdout": {
+        "by_language_and_kind": {},
+        "conservative_precision": null,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": null,
+        "samples": 0,
+        "tp": 0,
+        "uncertain": 0
+      },
+      "tuning": {
+        "by_language_and_kind": {},
+        "conservative_precision": null,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": null,
+        "samples": 0,
+        "tp": 0,
+        "uncertain": 0
+      }
+    },
+    "LNK001": {
+      "acceptance_route": "natural_holdout",
+      "decision": "stable",
+      "eligible_for_stable": true,
+      "holdout": {
+        "by_language_and_kind": {
+          "en/howto": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 51,
+            "tp": 51,
+            "uncertain": 0
+          },
+          "en/unknown": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 363,
+            "tp": 363,
+            "uncertain": 0
+          },
+          "ja/reference": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 255,
+            "tp": 255,
+            "uncertain": 0
+          },
+          "ja/unknown": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 408,
+            "tp": 408,
+            "uncertain": 0
+          },
+          "zh/reference": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 1,
+            "tp": 1,
+            "uncertain": 0
+          },
+          "zh/unknown": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 113,
+            "tp": 113,
+            "uncertain": 0
+          }
+        },
+        "conservative_precision": 1.0,
+        "fp": 0,
+        "individually_reviewed_by_agent": 120,
+        "precision": 1.0,
+        "samples": 1191,
+        "tp": 1191,
+        "uncertain": 0
+      },
+      "tuning": {
+        "by_language_and_kind": {
+          "en/howto": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 2,
+            "tp": 2,
+            "uncertain": 0
+          },
+          "en/reference": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 15,
+            "tp": 15,
+            "uncertain": 0
+          },
+          "en/unknown": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 201,
+            "tp": 201,
+            "uncertain": 0
+          },
+          "ja/reference": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 1,
+            "tp": 1,
+            "uncertain": 0
+          },
+          "ja/unknown": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 118,
+            "tp": 118,
+            "uncertain": 0
+          },
+          "zh/reference": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 241,
+            "tp": 241,
+            "uncertain": 0
+          },
+          "zh/unknown": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 393,
+            "tp": 393,
+            "uncertain": 0
+          }
+        },
+        "conservative_precision": 1.0,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": 1.0,
+        "samples": 971,
+        "tp": 971,
+        "uncertain": 0
+      }
+    },
+    "PTR001": {
+      "acceptance_route": "natural_holdout",
+      "decision": "preview",
+      "eligible_for_stable": false,
+      "holdout": {
+        "by_language_and_kind": {
+          "en/howto": {
+            "conservative_precision": 0.75,
+            "fp": 1,
+            "precision": 0.75,
+            "samples": 4,
+            "tp": 3,
+            "uncertain": 0
+          },
+          "ja/reference": {
+            "conservative_precision": 1.0,
+            "fp": 0,
+            "precision": 1.0,
+            "samples": 1,
+            "tp": 1,
+            "uncertain": 0
+          }
+        },
+        "conservative_precision": 0.8,
+        "fp": 1,
+        "individually_reviewed_by_agent": 5,
+        "precision": 0.8,
+        "samples": 5,
+        "tp": 4,
+        "uncertain": 0
+      },
+      "tuning": {
+        "by_language_and_kind": {},
+        "conservative_precision": null,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": null,
+        "samples": 0,
+        "tp": 0,
+        "uncertain": 0
+      }
+    },
+    "PTR003": {
+      "acceptance_route": "natural_holdout",
+      "decision": "preview",
+      "eligible_for_stable": false,
+      "holdout": {
+        "by_language_and_kind": {},
+        "conservative_precision": null,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": null,
+        "samples": 0,
+        "tp": 0,
+        "uncertain": 0
+      },
+      "tuning": {
+        "by_language_and_kind": {},
+        "conservative_precision": null,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": null,
+        "samples": 0,
+        "tp": 0,
+        "uncertain": 0
+      }
+    },
+    "RAT002": {
+      "acceptance_route": "natural_holdout",
+      "decision": "preview",
+      "eligible_for_stable": false,
+      "holdout": {
+        "by_language_and_kind": {},
+        "conservative_precision": null,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": null,
+        "samples": 0,
+        "tp": 0,
+        "uncertain": 0
+      },
+      "tuning": {
+        "by_language_and_kind": {},
+        "conservative_precision": null,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": null,
+        "samples": 0,
+        "tp": 0,
+        "uncertain": 0
+      }
+    },
+    "STL001": {
+      "acceptance_route": "natural_holdout",
+      "decision": "preview",
+      "eligible_for_stable": false,
+      "holdout": {
+        "by_language_and_kind": {
+          "en/howto": {
+            "conservative_precision": 0.0,
+            "fp": 1,
+            "precision": 0.0,
+            "samples": 1,
+            "tp": 0,
+            "uncertain": 0
+          },
+          "zh/reference": {
+            "conservative_precision": 0.0,
+            "fp": 6,
+            "precision": 0.0,
+            "samples": 6,
+            "tp": 0,
+            "uncertain": 0
+          }
+        },
+        "conservative_precision": 0.0,
+        "fp": 7,
+        "individually_reviewed_by_agent": 7,
+        "precision": 0.0,
+        "samples": 7,
+        "tp": 0,
+        "uncertain": 0
+      },
+      "tuning": {
+        "by_language_and_kind": {
+          "zh/reference": {
+            "conservative_precision": 0.0,
+            "fp": 1,
+            "precision": 0.0,
+            "samples": 1,
+            "tp": 0,
+            "uncertain": 0
+          }
+        },
+        "conservative_precision": 0.0,
+        "fp": 1,
+        "individually_reviewed_by_agent": 1,
+        "precision": 0.0,
+        "samples": 1,
+        "tp": 0,
+        "uncertain": 0
+      }
+    },
+    "STL003": {
+      "acceptance_route": "natural_holdout",
+      "decision": "preview",
+      "eligible_for_stable": false,
+      "holdout": {
+        "by_language_and_kind": {},
+        "conservative_precision": null,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": null,
+        "samples": 0,
+        "tp": 0,
+        "uncertain": 0
+      },
+      "tuning": {
+        "by_language_and_kind": {},
+        "conservative_precision": null,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": null,
+        "samples": 0,
+        "tp": 0,
+        "uncertain": 0
+      }
+    },
+    "SUP001": {
+      "acceptance_route": "protocol_conformance",
+      "decision": "stable",
+      "eligible_for_stable": true,
+      "holdout": {
+        "by_language_and_kind": {},
+        "conservative_precision": null,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": null,
+        "samples": 0,
+        "tp": 0,
+        "uncertain": 0
+      },
+      "tuning": {
+        "by_language_and_kind": {},
+        "conservative_precision": null,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": null,
+        "samples": 0,
+        "tp": 0,
+        "uncertain": 0
+      }
+    },
+    "SUP002": {
+      "acceptance_route": "protocol_conformance",
+      "decision": "stable",
+      "eligible_for_stable": true,
+      "holdout": {
+        "by_language_and_kind": {},
+        "conservative_precision": null,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": null,
+        "samples": 0,
+        "tp": 0,
+        "uncertain": 0
+      },
+      "tuning": {
+        "by_language_and_kind": {},
+        "conservative_precision": null,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": null,
+        "samples": 0,
+        "tp": 0,
+        "uncertain": 0
+      }
+    },
+    "VOX001": {
+      "acceptance_route": "natural_holdout",
+      "decision": "preview",
+      "eligible_for_stable": false,
+      "holdout": {
+        "by_language_and_kind": {},
+        "conservative_precision": null,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": null,
+        "samples": 0,
+        "tp": 0,
+        "uncertain": 0
+      },
+      "tuning": {
+        "by_language_and_kind": {},
+        "conservative_precision": null,
+        "fp": 0,
+        "individually_reviewed_by_agent": 0,
+        "precision": null,
+        "samples": 0,
+        "tp": 0,
+        "uncertain": 0
+      }
+    }
+  },
+  "schema_version": 1
+}

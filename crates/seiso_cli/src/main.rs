@@ -6,7 +6,10 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand, ValueEnum};
 use seiso_config::Workspace;
 use seiso_md::Document;
+use seiso_rules::{KindResolution, resolve_kind};
 use serde::Serialize;
+
+mod commands;
 
 #[derive(Parser)]
 #[command(
@@ -21,6 +24,19 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Check Markdown and report documentation diagnostics.
+    Check(commands::CheckArgs),
+    /// Print the effective file policies as deterministic JSON.
+    Policy(commands::PolicyArgs),
+    /// Print a rule's explanation and examples.
+    Rule(commands::RuleArgs),
+    /// Create a configuration with suggested kind mappings.
+    Init,
+    /// Adapt editor events to Markdown checks.
+    Hook {
+        #[command(subcommand)]
+        command: commands::HookCommand,
+    },
     /// Parse Markdown into the seiso document model (does not run lint rules).
     Parse(ParseArgs),
 }
@@ -56,13 +72,6 @@ struct ParsedFile {
 }
 
 #[derive(Serialize)]
-struct KindResolution {
-    value: Option<String>,
-    source: &'static str,
-    problem: Option<String>,
-}
-
-#[derive(Serialize)]
 struct InputError {
     filename: String,
     message: String,
@@ -87,6 +96,11 @@ fn main() -> ExitCode {
 fn run(cli: Cli) -> Result<u8, String> {
     match cli.command {
         Command::Parse(args) => parse_workspace(args),
+        Command::Check(args) => commands::check(args),
+        Command::Policy(args) => commands::policy(args),
+        Command::Rule(args) => commands::rule(args),
+        Command::Init => commands::init(),
+        Command::Hook { command } => Ok(commands::hook(command)),
     }
 }
 
@@ -250,57 +264,6 @@ fn parse_workspace(args: ParseArgs) -> Result<u8, String> {
         eprintln!("{}: {}", error.filename, error.message);
     }
     Ok(if report.errors.is_empty() { 0 } else { 2 })
-}
-
-fn resolve_kind(document: &Document, mapped: Option<&str>) -> KindResolution {
-    if let Some(frontmatter) = &document.frontmatter {
-        if !frontmatter.errors.is_empty() {
-            return KindResolution {
-                value: None,
-                source: "frontmatter",
-                problem: Some(
-                    "Frontmatter is invalid; inspect document.frontmatter.errors.".into(),
-                ),
-            };
-        }
-        if let Some(kind) = &frontmatter.kind {
-            return if kind != "generated" && seiso_config::KINDS.contains(&kind.as_str()) {
-                KindResolution {
-                    value: Some(kind.clone()),
-                    source: "frontmatter",
-                    problem: None,
-                }
-            } else {
-                KindResolution {
-                    value: None,
-                    source: "frontmatter",
-                    problem: Some(if kind == "generated" {
-                        "The generated kind can only be assigned in configuration.".into()
-                    } else {
-                        format!(
-                            "Unknown kind {kind:?}; use readme, howto, reference, runbook, adr, plan, or changelog."
-                        )
-                    }),
-                }
-            };
-        }
-    }
-    KindResolution {
-        value: mapped.map(str::to_owned),
-        source: if mapped.is_some() {
-            "configuration"
-        } else {
-            "unknown"
-        },
-        problem: if mapped.is_none() {
-            Some(
-                "Declare kind in frontmatter or add a matching [[kinds]] configuration entry."
-                    .into(),
-            )
-        } else {
-            None
-        },
-    }
 }
 
 fn render_summary(report: &ParseReport) -> String {

@@ -1,0 +1,27 @@
+---
+source: crates/seiso_rules/tests/engine.rs
+expression: result.diagnostics
+---
+[
+  {
+    "code": "STL001",
+    "message": "This sentence pairs a current-state marker with a value that can change.",
+    "filename": "docs/guide.md",
+    "location": {
+      "row": 4,
+      "column": 29
+    },
+    "end_location": {
+      "row": 4,
+      "column": 35
+    },
+    "byte_range": {
+      "start": 48,
+      "end": 54
+    },
+    "fix": null,
+    "url": null,
+    "related": [],
+    "suggestion": "Link to the source that owns the value, or state a lasting requirement with its constraint."
+  }
+]

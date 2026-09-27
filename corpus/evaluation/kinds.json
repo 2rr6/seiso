@@ -1,0 +1,583 @@
+{
+  "schema_version": 1,
+  "corpus_sha256": "3904c6c396606d13a21de7296624bfff99054f60d872cb4da6a346ddb80487cb",
+  "reviewer_kind": "agent",
+  "review_basis": "Pinned original Markdown bytes reviewed before normative diagnostic generation; scope mappings use complete representative documents identified per mapping. Unmapped files remain unknown.",
+  "profiles": {
+    "codex": {
+      "mappings": [
+        {
+          "path": "README.md",
+          "kind": "readme",
+          "rationale": "Introduces the project or documentation scope, gives entry points, and directs readers to further documentation. The assigned responsibility does not assert that every section complies with it.",
+          "reviewed_examples": [
+            "README.md"
+          ]
+        },
+        {
+          "path": "docs/install.md",
+          "kind": "howto",
+          "rationale": "Gives installation requirements, build commands, and logging setup steps.",
+          "reviewed_examples": [
+            "docs/install.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "claude-code": {
+      "mappings": [
+        {
+          "path": "README.md",
+          "kind": "readme",
+          "rationale": "Introduces the project or documentation scope, gives entry points, and directs readers to further documentation. The assigned responsibility does not assert that every section complies with it.",
+          "reviewed_examples": [
+            "README.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "aider": {
+      "mappings": [
+        {
+          "path": "README.md",
+          "kind": "readme",
+          "rationale": "Introduces the project or documentation scope, gives entry points, and directs readers to further documentation. The assigned responsibility does not assert that every section complies with it.",
+          "reviewed_examples": [
+            "README.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "cline": {
+      "mappings": [
+        {
+          "path": "README.md",
+          "kind": "readme",
+          "rationale": "Introduces the project or documentation scope, gives entry points, and directs readers to further documentation. The assigned responsibility does not assert that every section complies with it.",
+          "reviewed_examples": [
+            "README.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "roo-code": {
+      "mappings": [
+        {
+          "path": "README.md",
+          "kind": "readme",
+          "rationale": "Introduces the project or documentation scope, gives entry points, and directs readers to further documentation. The assigned responsibility does not assert that every section complies with it.",
+          "reviewed_examples": [
+            "README.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "gemini-cli": {
+      "mappings": [
+        {
+          "path": "docs/tools/activate-skill.md",
+          "kind": "reference",
+          "rationale": "Defines tool arguments, persistent behavior, or interfaces; examples illustrate that contract.",
+          "reviewed_examples": [
+            "docs/tools/activate-skill.md"
+          ]
+        },
+        {
+          "path": "docs/tools/memory.md",
+          "kind": "reference",
+          "rationale": "Defines tool arguments, persistent behavior, or interfaces; examples illustrate that contract.",
+          "reviewed_examples": [
+            "docs/tools/memory.md"
+          ]
+        },
+        {
+          "path": "docs/tools/todos.md",
+          "kind": "reference",
+          "rationale": "Defines tool arguments, persistent behavior, or interfaces; examples illustrate that contract.",
+          "reviewed_examples": [
+            "docs/tools/todos.md"
+          ]
+        },
+        {
+          "path": "docs/tools/web-search.md",
+          "kind": "reference",
+          "rationale": "Defines tool arguments, persistent behavior, or interfaces; examples illustrate that contract.",
+          "reviewed_examples": [
+            "docs/tools/web-search.md"
+          ]
+        },
+        {
+          "path": "docs/resources/uninstall.md",
+          "kind": "howto",
+          "rationale": "Provides uninstall commands for each supported installation route.",
+          "reviewed_examples": [
+            "docs/resources/uninstall.md"
+          ]
+        },
+        {
+          "path": "docs/changelogs/latest.md",
+          "kind": "changelog",
+          "rationale": "Records a dated release and its changes, with links to contributing commits.",
+          "reviewed_examples": [
+            "docs/changelogs/latest.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "spec-kit": {
+      "mappings": [
+        {
+          "path": "docs/README.md",
+          "kind": "readme",
+          "rationale": "Introduces the project or documentation scope, gives entry points, and directs readers to further documentation. The assigned responsibility does not assert that every section complies with it.",
+          "reviewed_examples": [
+            "docs/README.md"
+          ]
+        },
+        {
+          "path": "docs/install/*.md",
+          "kind": "howto",
+          "rationale": "Installation-route pages lead readers through commands and verification. Two complete route pages establish the shared task-oriented scope.",
+          "reviewed_examples": [
+            "docs/install/one-time.md",
+            "docs/install/pypi.md"
+          ]
+        },
+        {
+          "path": "docs/reference/authentication.md",
+          "kind": "reference",
+          "rationale": "Specifies authentication fields, provider schemes, host matching, and request semantics; setup examples illustrate the configuration contract.",
+          "reviewed_examples": [
+            "docs/reference/authentication.md"
+          ]
+        },
+        {
+          "path": "docs/reference/overview.md",
+          "kind": "reference",
+          "rationale": "Catalogs CLI primitives and agentic commands, linking to their detailed definitions.",
+          "reviewed_examples": [
+            "docs/reference/overview.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Concept essays, agent prompt templates, and unreviewed guides remain unknown. A template filename does not establish the responsibility of an instantiated document.",
+      "reviewed_unknown_examples": []
+    },
+    "anthropic-skills": {
+      "mappings": [
+        {
+          "path": "README.md",
+          "kind": "readme",
+          "rationale": "Introduces the project or documentation scope, gives entry points, and directs readers to further documentation. The assigned responsibility does not assert that every section complies with it.",
+          "reviewed_examples": [
+            "README.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "pydantic-ai": {
+      "mappings": [
+        {
+          "path": "docs/api/*.md",
+          "kind": "reference",
+          "rationale": "API pages expose named symbols, member lists, and types. These are source stubs and prose for reference rendering; the profile does not exempt them as generated.",
+          "reviewed_examples": [
+            "docs/api/agent.md",
+            "docs/api/messages.md",
+            "docs/api/output.md"
+          ]
+        },
+        {
+          "path": "docs/examples/setup.md",
+          "kind": "howto",
+          "rationale": "Explains installation, provider environment setup, and commands for running and copying examples.",
+          "reviewed_examples": [
+            "docs/examples/setup.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "langgraph": {
+      "mappings": [
+        {
+          "path": "README.md",
+          "kind": "readme",
+          "rationale": "Introduces the project or documentation scope, gives entry points, and directs readers to further documentation. The assigned responsibility does not assert that every section complies with it.",
+          "reviewed_examples": [
+            "README.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "autogen": {
+      "mappings": [
+        {
+          "path": "python/packages/autogen-agentchat/README.md",
+          "kind": "readme",
+          "rationale": "Introduces the project or documentation scope, gives entry points, and directs readers to further documentation. The assigned responsibility does not assert that every section complies with it.",
+          "reviewed_examples": [
+            "python/packages/autogen-agentchat/README.md"
+          ]
+        },
+        {
+          "path": "python/packages/autogen-core/README.md",
+          "kind": "readme",
+          "rationale": "Introduces the project or documentation scope, gives entry points, and directs readers to further documentation. The assigned responsibility does not assert that every section complies with it.",
+          "reviewed_examples": [
+            "python/packages/autogen-core/README.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "goose": {
+      "mappings": [
+        {
+          "path": "documentation/docs/mcp/*.md",
+          "kind": "howto",
+          "rationale": "Extension pages instruct readers to install or enable an integration, configure it, and try an example. Complete GitHub, Todo, and YouTube Transcript pages establish this shared procedure format.",
+          "reviewed_examples": [
+            "documentation/docs/mcp/github-mcp.md",
+            "documentation/docs/mcp/todo-mcp.md",
+            "documentation/docs/mcp/youtube-transcript-mcp.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "opencode": {
+      "mappings": [
+        {
+          "path": "README.md",
+          "kind": "readme",
+          "rationale": "Introduces the project or documentation scope, gives entry points, and directs readers to further documentation. The assigned responsibility does not assert that every section complies with it.",
+          "reviewed_examples": [
+            "README.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "ruff": {
+      "mappings": [
+        {
+          "path": "docs/installation.md",
+          "kind": "howto",
+          "rationale": "Provides package-manager, standalone installer, and container commands to install and run Ruff.",
+          "reviewed_examples": [
+            "docs/installation.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "uv": {
+      "mappings": [
+        {
+          "path": "docs/guides/integration/*.md",
+          "kind": "howto",
+          "rationale": "Integration pages explain concrete setup/configuration tasks with commands and configuration examples. The directory index is separately overridden as a catalog.",
+          "reviewed_examples": [
+            "docs/guides/integration/pre-commit.md",
+            "docs/guides/integration/gitlab.md",
+            "docs/guides/integration/renovate.md"
+          ]
+        },
+        {
+          "path": "docs/guides/integration/index.md",
+          "kind": "reference",
+          "rationale": "Lists the available integration guides and their targets without carrying the procedures.",
+          "reviewed_examples": [
+            "docs/guides/integration/index.md"
+          ]
+        },
+        {
+          "path": "docs/reference/storage.md",
+          "kind": "reference",
+          "rationale": "Defines storage directories, platform-specific resolution order, and the data assigned to each location.",
+          "reviewed_examples": [
+            "docs/reference/storage.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "ripgrep": {
+      "mappings": [
+        {
+          "path": "README.md",
+          "kind": "readme",
+          "rationale": "Introduces the project or documentation scope, gives entry points, and directs readers to further documentation. The assigned responsibility does not assert that every section complies with it.",
+          "reviewed_examples": [
+            "README.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "bat": {
+      "mappings": [
+        {
+          "path": "doc/release-checklist.md",
+          "kind": "howto",
+          "rationale": "Reusable release procedure with preparation, publication, and verification steps; it does not record a specific planned release or incident.",
+          "reviewed_examples": [
+            "doc/release-checklist.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "fd": {
+      "mappings": [
+        {
+          "path": "doc/release-checklist.md",
+          "kind": "howto",
+          "rationale": "Reusable release procedure with preparation, publication, and verification steps; it does not record a specific planned release or incident.",
+          "reviewed_examples": [
+            "doc/release-checklist.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "nushell": {
+      "mappings": [
+        {
+          "path": "README.md",
+          "kind": "readme",
+          "rationale": "Introduces the project or documentation scope, gives entry points, and directs readers to further documentation. The assigned responsibility does not assert that every section complies with it.",
+          "reviewed_examples": [
+            "README.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "mdbook": {
+      "mappings": [
+        {
+          "path": "README.md",
+          "kind": "readme",
+          "rationale": "Introduces the project or documentation scope, gives entry points, and directs readers to further documentation. The assigned responsibility does not assert that every section complies with it.",
+          "reviewed_examples": [
+            "README.md"
+          ]
+        },
+        {
+          "path": "guide/src/guide/installation.md",
+          "kind": "howto",
+          "rationale": "Gives concrete actions for installing mdBook, creating a book, or navigating and interacting with a rendered book.",
+          "reviewed_examples": [
+            "guide/src/guide/installation.md"
+          ]
+        },
+        {
+          "path": "guide/src/guide/creating.md",
+          "kind": "howto",
+          "rationale": "Gives concrete actions for installing mdBook, creating a book, or navigating and interacting with a rendered book.",
+          "reviewed_examples": [
+            "guide/src/guide/creating.md"
+          ]
+        },
+        {
+          "path": "guide/src/guide/reading.md",
+          "kind": "howto",
+          "rationale": "Gives concrete actions for installing mdBook, creating a book, or navigating and interacting with a rendered book.",
+          "reviewed_examples": [
+            "guide/src/guide/reading.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "vue-zh": {
+      "mappings": [
+        {
+          "path": "src/api/*.md",
+          "kind": "reference",
+          "rationale": "API pages define named functions, options, types, and return values, with usage examples subordinate to those definitions.",
+          "reviewed_examples": [
+            "src/api/composition-api-helpers.md",
+            "src/api/options-misc.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Guide concepts, interactive tutorial exercises, style essays, site component shells outside the API scope, and other unreviewed paths remain unknown. A guide directory alone is insufficient to assign howto.",
+      "reviewed_unknown_examples": []
+    },
+    "rust-book-zh": {
+      "mappings": [
+        {
+          "path": "src/appendix-01-keywords.md",
+          "kind": "reference",
+          "rationale": "Lists language keywords or operators and their definitions, with illustrative syntax examples.",
+          "reviewed_examples": [
+            "src/appendix-01-keywords.md"
+          ]
+        },
+        {
+          "path": "src/appendix-02-operators.md",
+          "kind": "reference",
+          "rationale": "Lists language keywords or operators and their definitions, with illustrative syntax examples.",
+          "reviewed_examples": [
+            "src/appendix-02-operators.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "The main book teaches language concepts through explanations and exercises. This educational responsibility is not represented by a dedicated seiso kind; other appendices have not been reviewed.",
+      "reviewed_unknown_examples": [
+        "src/ch03-00-common-programming-concepts.md"
+      ]
+    },
+    "frp-zh": {
+      "mappings": [
+        {
+          "path": "doc/virtual_net.md",
+          "kind": "howto",
+          "rationale": "Provides enabling and client/visitor configuration steps for a concrete feature.",
+          "reviewed_examples": [
+            "doc/virtual_net.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "oi-wiki": {
+      "mappings": [
+        {
+          "path": "docs/intro/docker-deploy.md",
+          "kind": "howto",
+          "rationale": "Provides an end-to-end procedure for building, running, maintaining, and removing the documentation container.",
+          "reviewed_examples": [
+            "docs/intro/docker-deploy.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Other paths have not received a responsibility review. They remain unknown rather than inheriting a repository-wide genre.",
+      "reviewed_unknown_examples": []
+    },
+    "advanced-java": {
+      "mappings": [
+        {
+          "path": "docs/distributed-system/README.md",
+          "kind": "readme",
+          "rationale": "Introduces a topical documentation section through a navigable index of interview questions and follow-up pages.",
+          "reviewed_examples": [
+            "docs/distributed-system/README.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Interview-preparation essays combine questions, interviewer reasoning, explanations, and examples. This responsibility is not safely equivalent to API reference, howto, or a project design decision. Other section indexes have not been reviewed.",
+      "reviewed_unknown_examples": [
+        "docs/high-concurrency/redis-data-types.md"
+      ]
+    },
+    "rust-book-ja": {
+      "mappings": [
+        {
+          "path": "src/appendix-01-keywords.md",
+          "kind": "reference",
+          "rationale": "Lists language keywords, reserved words, and raw identifier syntax with illustrative examples.",
+          "reviewed_examples": [
+            "src/appendix-01-keywords.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "The main book teaches language concepts through explanations and exercises. This educational responsibility is not represented by a dedicated seiso kind; other appendices have not been reviewed.",
+      "reviewed_unknown_examples": [
+        "src/ch03-00-common-programming-concepts.md"
+      ]
+    },
+    "vue-ja": {
+      "mappings": [
+        {
+          "path": "src/api/*.md",
+          "kind": "reference",
+          "rationale": "API pages define named functions, options, types, and return values, with usage examples subordinate to those definitions.",
+          "reviewed_examples": [
+            "src/api/composition-api-helpers.md",
+            "src/api/options-misc.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Guide concepts, interactive tutorial exercises, style essays, site component shells outside the API scope, and other unreviewed paths remain unknown. A guide directory alone is insufficient to assign howto.",
+      "reviewed_unknown_examples": []
+    },
+    "rust-examples-ja": {
+      "mappings": [],
+      "unknown_rationale": "Sampled chapters teach language concepts through editable examples and exercises. The corpus is an educational book rather than a set of reviewed operational procedures; its remaining chapters are unreviewed.",
+      "reviewed_unknown_examples": [
+        "src/hello.md",
+        "src/flow_control/while.md"
+      ]
+    },
+    "js-primer": {
+      "mappings": [
+        {
+          "path": "source/README.md",
+          "kind": "readme",
+          "rationale": "Provides the book entry-point table of contents and links to its chapters; the README filenames of individual lessons are not treated as project introductions.",
+          "reviewed_examples": [
+            "source/README.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Individual chapters and exercises need separate responsibility review; README is used throughout this book as a chapter filename, so no recursive README mapping is applied.",
+      "reviewed_unknown_examples": []
+    },
+    "generative-ai-ja": {
+      "mappings": [
+        {
+          "path": "translations/ja/00-course-setup/01-setup-cloud.md",
+          "kind": "howto",
+          "rationale": "Provides numbered cloud or local environment setup steps, expected outcomes, and configuration commands.",
+          "reviewed_examples": [
+            "translations/ja/00-course-setup/01-setup-cloud.md"
+          ]
+        },
+        {
+          "path": "translations/ja/00-course-setup/02-setup-local.md",
+          "kind": "howto",
+          "rationale": "Provides numbered cloud or local environment setup steps, expected outcomes, and configuration commands.",
+          "reviewed_examples": [
+            "translations/ja/00-course-setup/02-setup-local.md"
+          ]
+        }
+      ],
+      "unknown_rationale": "Course lessons mix conceptual explanation, history, exercises, and knowledge checks. Their README filenames do not establish readme responsibility. Other setup/support files remain unreviewed.",
+      "reviewed_unknown_examples": [
+        "translations/ja/01-introduction-to-genai/README.md"
+      ]
+    }
+  }
+}

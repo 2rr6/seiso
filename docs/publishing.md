@@ -18,8 +18,8 @@ cargo test --workspace --locked
 cargo publish --workspace --dry-run --locked
 ```
 
-Cargo publishes `seiso` and its `seiso_config`, `seiso_diagnostics`, and
-`seiso_md` dependencies. Every crate ships an MIT license file copied from
+Cargo publishes the CLI and its workspace library dependencies. Every crate
+ships an MIT license file copied from
 the repository license; keep those copies synchronized when changing it.
 
 ## Build the installation packages

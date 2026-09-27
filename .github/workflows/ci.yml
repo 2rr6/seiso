@@ -25,6 +25,10 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - if: runner.os == 'Linux'
+        run: |
+          cargo run --locked -p seiso -- check --output-format concise
+          cargo run --locked -p seiso -- check --preview --output-format concise
+      - if: runner.os == 'Linux'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -32,3 +36,4 @@ jobs:
         run: |
           python -m unittest discover -s scripts -p 'test_*.py'
           python -m unittest discover -s corpus -p 'test_*.py'
+          python -m unittest discover -s corpus/evaluation -p 'test_*.py'

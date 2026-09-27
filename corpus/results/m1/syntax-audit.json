@@ -1,0 +1,607 @@
+{
+  "schema_version": 1,
+  "audit": "m1-natural-protocol-syntax",
+  "recorded_at": "2026-09-27T16:02:21.994555+00:00",
+  "status": "observed_syntax_counts_only",
+  "corpus_lock_sha256": "3904c6c396606d13a21de7296624bfff99054f60d872cb4da6a346ddb80487cb",
+  "parser_executable_sha256": "09bc2cde75534c548cde54e112c7d2419c953060aa8072acfdbe1f7da6495c24",
+  "method": {
+    "integrity": "Every original document was checked against its locked byte length and SHA-256 before scanning.",
+    "raw_scan": "Case-insensitive multiline scans for seiso\\s*: and ^\\s*kind\\s*: across every document.",
+    "parsed_candidate_selector": "The first line after removing a BOM and trailing whitespace equals ---, or original text contains kind: or seiso:.",
+    "parse_command": [
+      "target/release/seiso.exe",
+      "parse",
+      "--stdin-filename",
+      "README.md",
+      "--output-format",
+      "json"
+    ],
+    "stdin": "Unmodified locked document bytes; the existing README.md path only supplies a virtual filename. No input file was overwritten.",
+    "parsed_fields": [
+      "document.frontmatter",
+      "document.comments"
+    ],
+    "remaining_inputs": "Inputs outside the candidate set cannot contain frontmatter under the parser first-line gate. Zero raw seiso markers across all inputs also establishes absence of seiso suppression comments.",
+    "manual_context_review": "Every raw kind line was an example, code field, or other body text; no parsed frontmatter declares kind."
+  },
+  "splits": {
+    "tuning": {
+      "repositories": 20,
+      "documents": 1291,
+      "parsed_candidates": 447,
+      "parsed_frontmatter": 442,
+      "kind_declarations": 0,
+      "frontmatter_errors": 10,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0,
+      "raw_kind_line_occurrences": 14,
+      "raw_kind_line_documents": 4
+    },
+    "holdout": {
+      "repositories": 10,
+      "documents": 662,
+      "parsed_candidates": 227,
+      "parsed_frontmatter": 224,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0,
+      "raw_kind_line_occurrences": 3,
+      "raw_kind_line_documents": 1
+    }
+  },
+  "sources": [
+    {
+      "id": "codex",
+      "repository": "openai/codex",
+      "commit": "88235f881d4e222cf779df785e747d8c8b935768",
+      "split": "tuning",
+      "documents": 17,
+      "parsed_candidates": 0,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "claude-code",
+      "repository": "anthropics/claude-code",
+      "commit": "7779afb12e3635f46f56ec823979d68350ae000b",
+      "split": "tuning",
+      "documents": 94,
+      "parsed_candidates": 47,
+      "parsed_frontmatter": 46,
+      "kind_declarations": 0,
+      "frontmatter_errors": 10,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "aider",
+      "repository": "Aider-AI/aider",
+      "commit": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c",
+      "split": "tuning",
+      "documents": 85,
+      "parsed_candidates": 83,
+      "parsed_frontmatter": 83,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "cline",
+      "repository": "cline/cline",
+      "commit": "252082b9e93b4f91253876391e35b4c13326f5e6",
+      "split": "tuning",
+      "documents": 1,
+      "parsed_candidates": 0,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "roo-code",
+      "repository": "RooCodeInc/Roo-Code",
+      "commit": "b867ec9145750d0ae1ff7f02d35406e9bf2a0b16",
+      "split": "holdout",
+      "documents": 1,
+      "parsed_candidates": 0,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "gemini-cli",
+      "repository": "google-gemini/gemini-cli",
+      "commit": "2fe7c2d3f065dc40ad573d50b2091116f8a4aa18",
+      "split": "tuning",
+      "documents": 95,
+      "parsed_candidates": 2,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "spec-kit",
+      "repository": "github/spec-kit",
+      "commit": "c00dc0551583428a10a94443c58c6a41e5e0138c",
+      "split": "holdout",
+      "documents": 57,
+      "parsed_candidates": 12,
+      "parsed_frontmatter": 11,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "anthropic-skills",
+      "repository": "anthropics/skills",
+      "commit": "33375500bcea98d610eb30ce10ac4e59b89c390d",
+      "split": "tuning",
+      "documents": 9,
+      "parsed_candidates": 4,
+      "parsed_frontmatter": 4,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "pydantic-ai",
+      "repository": "pydantic/pydantic-ai",
+      "commit": "69eb81bde23c8db52ee8617217bdaf46bf0468df",
+      "split": "tuning",
+      "documents": 311,
+      "parsed_candidates": 215,
+      "parsed_frontmatter": 215,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "langgraph",
+      "repository": "langchain-ai/langgraph",
+      "commit": "7daa3ab49d678a5da75edb08baa87db4a2be52c3",
+      "split": "holdout",
+      "documents": 1,
+      "parsed_candidates": 0,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "autogen",
+      "repository": "microsoft/autogen",
+      "commit": "027ecf0a379bcc1d09956d46d12d44a3ad9cee14",
+      "split": "tuning",
+      "documents": 3,
+      "parsed_candidates": 0,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "goose",
+      "repository": "aaif-goose/goose",
+      "commit": "04ed836c8cde23e540cc77d256992e00be99298b",
+      "split": "holdout",
+      "documents": 163,
+      "parsed_candidates": 160,
+      "parsed_frontmatter": 160,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "opencode",
+      "repository": "anomalyco/opencode",
+      "commit": "b471c2b4495747353af768fbf2e0790c9d820ce2",
+      "split": "tuning",
+      "documents": 2,
+      "parsed_candidates": 0,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "ruff",
+      "repository": "astral-sh/ruff",
+      "commit": "a1f59fb6a3cde0a810c85e038a92ca8f10c21f57",
+      "split": "tuning",
+      "documents": 17,
+      "parsed_candidates": 1,
+      "parsed_frontmatter": 1,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "uv",
+      "repository": "astral-sh/uv",
+      "commit": "136ef97330781a0f5f2be6613aac4382ebbcecea",
+      "split": "holdout",
+      "documents": 82,
+      "parsed_candidates": 23,
+      "parsed_frontmatter": 23,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "ripgrep",
+      "repository": "BurntSushi/ripgrep",
+      "commit": "3fce3b5bb0236da2df6d99672afb8a719642eca7",
+      "split": "tuning",
+      "documents": 3,
+      "parsed_candidates": 0,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "bat",
+      "repository": "sharkdp/bat",
+      "commit": "4987f76709aae3a1c4db723c53874c9ddcb0c4fd",
+      "split": "tuning",
+      "documents": 9,
+      "parsed_candidates": 0,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "fd",
+      "repository": "sharkdp/fd",
+      "commit": "ce97e473ebaec49697c07daa50a7bc2b32f713d2",
+      "split": "tuning",
+      "documents": 3,
+      "parsed_candidates": 0,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "nushell",
+      "repository": "nushell/nushell",
+      "commit": "2459fdd134ea4fdbae42efd6924e2b41201cf363",
+      "split": "holdout",
+      "documents": 1,
+      "parsed_candidates": 0,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "mdbook",
+      "repository": "rust-lang/mdBook",
+      "commit": "ea1b91d0ea1fa2d62e4c1faeeffd910ce19306fd",
+      "split": "tuning",
+      "documents": 36,
+      "parsed_candidates": 0,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "vue-zh",
+      "repository": "vuejs-translations/docs-zh-cn",
+      "commit": "dda601fe33187dfd913641d58b6cefe829bf1a0d",
+      "split": "tuning",
+      "documents": 121,
+      "parsed_candidates": 30,
+      "parsed_frontmatter": 30,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "rust-book-zh",
+      "repository": "rust-lang-cn/book-cn",
+      "commit": "cde74c448e301ce8ac7960a0d3dc879efd83635d",
+      "split": "holdout",
+      "documents": 105,
+      "parsed_candidates": 2,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "frp-zh",
+      "repository": "fatedier/frp",
+      "commit": "d20a232996007dfe6ab425abc0a39a3ae9a0889b",
+      "split": "tuning",
+      "documents": 6,
+      "parsed_candidates": 0,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "oi-wiki",
+      "repository": "OI-wiki/OI-wiki",
+      "commit": "387fb8d05a4a27d42cdee612a7f37786d4d0fed4",
+      "split": "tuning",
+      "documents": 86,
+      "parsed_candidates": 0,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "advanced-java",
+      "repository": "doocs/advanced-java",
+      "commit": "1a35221e471fa3adf8997895268fd18b36f27c01",
+      "split": "holdout",
+      "documents": 92,
+      "parsed_candidates": 1,
+      "parsed_frontmatter": 1,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "rust-book-ja",
+      "repository": "rust-lang-ja/book-ja",
+      "commit": "5092e5395bf32a65b277c3b1cc1a81ba288c7d46",
+      "split": "tuning",
+      "documents": 105,
+      "parsed_candidates": 2,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "vue-ja",
+      "repository": "vuejs-translations/docs-ja",
+      "commit": "edc1273e61d3f46668bd78b29d18ef04adcf5138",
+      "split": "holdout",
+      "documents": 120,
+      "parsed_candidates": 29,
+      "parsed_frontmatter": 29,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "rust-examples-ja",
+      "repository": "rust-lang-ja/rust-by-example-ja",
+      "commit": "d9ed1fd0a6279f8fd06d434e7176f5f8845c3156",
+      "split": "tuning",
+      "documents": 200,
+      "parsed_candidates": 0,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "js-primer",
+      "repository": "js-primer/js-primer",
+      "commit": "b4f2bb04dce74868c46e73a8fd9842c67ab24e49",
+      "split": "tuning",
+      "documents": 88,
+      "parsed_candidates": 63,
+      "parsed_frontmatter": 63,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    },
+    {
+      "id": "generative-ai-ja",
+      "repository": "microsoft/generative-ai-for-beginners",
+      "commit": "d8ec07e31c4b32bd283d565c1abd9b58bb5cf2e8",
+      "split": "holdout",
+      "documents": 40,
+      "parsed_candidates": 0,
+      "parsed_frontmatter": 0,
+      "kind_declarations": 0,
+      "frontmatter_errors": 0,
+      "raw_seiso_markers": 0,
+      "parsed_seiso_comments": 0
+    }
+  ],
+  "holdout_protocol_rules": {
+    "KND002": {
+      "natural_trigger_candidates": 0,
+      "labeled_diagnostics": 0,
+      "precision": null,
+      "precision_status": "unavailable_no_natural_diagnostics",
+      "existing_stable_gate_satisfied": false
+    },
+    "SUP001": {
+      "natural_trigger_candidates": 0,
+      "labeled_diagnostics": 0,
+      "precision": null,
+      "precision_status": "unavailable_no_natural_diagnostics",
+      "existing_stable_gate_satisfied": false
+    },
+    "SUP002": {
+      "natural_trigger_candidates": 0,
+      "labeled_diagnostics": 0,
+      "precision": null,
+      "precision_status": "unavailable_no_natural_diagnostics",
+      "existing_stable_gate_satisfied": false
+    }
+  },
+  "limits": [
+    "This syntax audit does not replace the complete natural rule evaluation.",
+    "Constructed protocol fixtures are not natural precision samples.",
+    "KND001 can produce 662 holdout missing-kind diagnostics with no configured kind mappings; this audit does not label them.",
+    "LNK001 requires the complete pinned repository inventory, including paths outside selected Markdown scopes."
+  ],
+  "raw_kind_candidates": [
+    {
+      "source": "claude-code",
+      "path": "plugins/plugin-dev/skills/plugin-structure/examples/advanced-plugin.md",
+      "split": "tuning",
+      "pattern": "kind_line",
+      "line": 533
+    },
+    {
+      "source": "claude-code",
+      "path": "plugins/plugin-dev/skills/plugin-structure/examples/advanced-plugin.md",
+      "split": "tuning",
+      "pattern": "kind_line",
+      "line": 569
+    },
+    {
+      "source": "claude-code",
+      "path": "plugins/plugin-dev/skills/plugin-structure/examples/advanced-plugin.md",
+      "split": "tuning",
+      "pattern": "kind_line",
+      "line": 575
+    },
+    {
+      "source": "gemini-cli",
+      "path": "docs/core/remote-agents.md",
+      "split": "tuning",
+      "pattern": "kind_line",
+      "line": 49
+    },
+    {
+      "source": "gemini-cli",
+      "path": "docs/core/remote-agents.md",
+      "split": "tuning",
+      "pattern": "kind_line",
+      "line": 94
+    },
+    {
+      "source": "gemini-cli",
+      "path": "docs/core/remote-agents.md",
+      "split": "tuning",
+      "pattern": "kind_line",
+      "line": 110
+    },
+    {
+      "source": "gemini-cli",
+      "path": "docs/core/remote-agents.md",
+      "split": "tuning",
+      "pattern": "kind_line",
+      "line": 154
+    },
+    {
+      "source": "gemini-cli",
+      "path": "docs/core/remote-agents.md",
+      "split": "tuning",
+      "pattern": "kind_line",
+      "line": 210
+    },
+    {
+      "source": "gemini-cli",
+      "path": "docs/core/remote-agents.md",
+      "split": "tuning",
+      "pattern": "kind_line",
+      "line": 292
+    },
+    {
+      "source": "gemini-cli",
+      "path": "docs/core/remote-agents.md",
+      "split": "tuning",
+      "pattern": "kind_line",
+      "line": 350
+    },
+    {
+      "source": "gemini-cli",
+      "path": "docs/core/remote-agents.md",
+      "split": "tuning",
+      "pattern": "kind_line",
+      "line": 362
+    },
+    {
+      "source": "gemini-cli",
+      "path": "docs/core/remote-agents.md",
+      "split": "tuning",
+      "pattern": "kind_line",
+      "line": 390
+    },
+    {
+      "source": "gemini-cli",
+      "path": "docs/core/subagents.md",
+      "split": "tuning",
+      "pattern": "kind_line",
+      "line": 337
+    },
+    {
+      "source": "pydantic-ai",
+      "path": "docs/output.md",
+      "split": "tuning",
+      "pattern": "kind_line",
+      "line": 421
+    },
+    {
+      "source": "rust-book-zh",
+      "path": "src/ch06-01-defining-an-enum.md",
+      "split": "holdout",
+      "pattern": "kind_line",
+      "line": 66
+    },
+    {
+      "source": "rust-book-zh",
+      "path": "src/ch06-01-defining-an-enum.md",
+      "split": "holdout",
+      "pattern": "kind_line",
+      "line": 71
+    },
+    {
+      "source": "rust-book-zh",
+      "path": "src/ch06-01-defining-an-enum.md",
+      "split": "holdout",
+      "pattern": "kind_line",
+      "line": 76
+    }
+  ],
+  "contract_validation": {
+    "date": "2026-09-28",
+    "platform": "Windows",
+    "command": "cargo test -p seiso_rules --test engine --test suppression --test acceptance_contract --locked",
+    "passed_tests": 27,
+    "failed_tests": 0,
+    "new_contract_tests": 6,
+    "unix_only_tests_executed": false
+  },
+  "proposal": "docs/evaluation/m1-gate-proposal.md",
+  "proposal_status": "accepted_by_project_owner_2026-09-28"
+}
