@@ -16,7 +16,7 @@ def is_documentation(path):
     # Rule pages are compiled into the binary; history is a parser test input.
     if path.startswith("docs/rules/") or path == "docs/design/history.md":
         return False
-    return path in {"README.md", "LICENSE", "corpus/README.md"} or (
+    return path in {"README.md", "CONTRIBUTING.md", "LICENSE", "corpus/README.md"} or (
         path.startswith(("docs/", "corpus/docs/")) and path.endswith(".md")
     )
 

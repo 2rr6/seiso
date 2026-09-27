@@ -13,7 +13,7 @@ import ci_scope
 
 class DocumentationPathsTests(unittest.TestCase):
     def test_only_prose_paths_are_documentation(self):
-        for path in ["README.md", "LICENSE", "docs/README.md", "docs/guides/checking.md",
+        for path in ["README.md", "CONTRIBUTING.md", "LICENSE", "docs/README.md", "docs/guides/checking.md",
                      "docs/design/roadmap.md", "docs/日本語 guide.md", "corpus/README.md",
                      "corpus/docs/evaluation.md"]:
             with self.subTest(path=path):
