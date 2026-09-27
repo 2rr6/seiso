@@ -124,3 +124,8 @@ revision uses its recorded M1 diagnostic report.
 Evaluation saves complete reports as artifacts and adds diagnostic differences
 to the workflow summary. Absolute latency targets remain acceptance checks;
 relative performance changes are reported for review.
+
+Enable `preview_stress` only when the dense duplicate workload needs another
+measurement. It is separate from stable-rule latency acceptance; known
+timeouts remain in the recorded evidence without delaying every evaluation.
+For a local run, add `--preview-stress` to the benchmark command.

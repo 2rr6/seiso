@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "run_url": "https://github.com/scarletkc/seiso/actions/runs/36336964185",
+  "head_sha": "267b3f177777a722c76afc55b560ccb0b589813b",
+  "artifact_id": 10937787464,
+  "report": "ci-initial.json",
+  "report_sha256": "94fbaff3df4a0016f895d832cc166b1cc3c065d58d3ed5a2b024c34e791b4e8a",
+  "original_conclusion": "failure: hook exceeded the original 50 ms threshold",
+  "subsequent_decision": "Owner accepted a 150 ms full-workspace hook target; the original report is preserved without changing its target or result."
+}

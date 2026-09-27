@@ -22,9 +22,12 @@ not enforce the relative limit across this transition. Subsequent M2 relative
 changes are reported for review under the
 [manual evaluation policy](../development.md#performance-and-ecosystem-checks).
 
-The absolute gates are unchanged: cold full checks below one second, warm
-full checks below 500 milliseconds, and warm hooks including process startup
-below 50 milliseconds. Acceptance uses the standard Linux CI runner and the
+Cold full checks must remain below one second and warm full checks below
+500 milliseconds. Warm hooks including process startup must remain below
+150 milliseconds. The owner approved the hook adjustment from 50 milliseconds
+after the full workspace measured 91 milliseconds on the standard two-core
+runner; a separate cache execution path was not justified for that difference.
+Acceptance uses the standard Linux CI runner and the
 fixed 1,000-file, approximately 10 MB workload. Local timings do not establish
 CI acceptance.
 

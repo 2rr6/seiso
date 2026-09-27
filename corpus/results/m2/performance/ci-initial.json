@@ -1,0 +1,420 @@
+{
+  "schema_version": 1,
+  "measured_at": "2026-09-27T17:31:52.512771+00:00",
+  "host": {
+    "system": "Linux",
+    "release": "6.17.0-1022-azure",
+    "machine": "x86_64",
+    "cpu": "AMD EPYC 7763 64-Core Processor",
+    "logical_cpus": 2,
+    "python": "3.12.14",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+    "runner": "github_actions_linux",
+    "standard_linux_ci": true,
+    "runner_os": "Linux",
+    "runner_arch": "X64",
+    "runner_environment": "github-hosted",
+    "image_os": "ubuntu24",
+    "image_version": "20260920.314.1"
+  },
+  "includes_process_startup": true,
+  "stdout_sink": "ordinary file",
+  "rule_selection": "default stable; preview measured separately",
+  "script_sha256": "4d612cf283c2361ae40532468d4066dd43c9d5196233d31331f5f7dceb4e4280",
+  "fixture": {
+    "version": 1,
+    "files": 1000,
+    "bytes": 10000000,
+    "sha256": "4c7dc11b4aab140ddd829fd67f3f79b21d3ad7feb6aab77be49ced6c83332253",
+    "distinct_contents": 600,
+    "files_in_exact_duplicate_groups": 500,
+    "construction": "100 groups of 10 documents; five exact template copies and five nearby variants per group; 15 similar procedure paragraphs per file; all padding is prose",
+    "intentionally_missing_links": 100
+  },
+  "input_filesystem_path": "/home/runner/work/_temp/seiso-m2-benchmark-z4r10m36",
+  "current": {
+    "binary": "/home/runner/work/seiso/seiso/current/target/release/seiso",
+    "binary_sha256": "03a2b244a98cdcdd6da1c7e672bb913effa0d2787be931f645bd89465463781e",
+    "version": "seiso 0.0.0",
+    "cache_supported": true,
+    "cache_mode_note": "cold clears only seiso's parse cache; filesystem page cache is uncontrolled",
+    "cold_warm_disabled_equal": true,
+    "hook_matches_selected_report": true,
+    "modes": {
+      "cold": {
+        "samples": [
+          {
+            "seconds": 0.7785786779999739,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 0.7138073670000153,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 0.7504439620000198,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 0.7281422780000071,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 0.7107145770000329,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          }
+        ],
+        "median_seconds": 0.7281422780000071,
+        "minimum_seconds": 0.7107145770000329,
+        "maximum_seconds": 0.7785786779999739,
+        "target_seconds": 1.0,
+        "target_met": true,
+        "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+        "output_bytes": 21700
+      },
+      "warm": {
+        "samples": [
+          {
+            "seconds": 0.10092759700000897,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 0.09646991599998955,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 0.0988504449999823,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 0.096971361000044,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 0.09669715199999018,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          }
+        ],
+        "median_seconds": 0.096971361000044,
+        "minimum_seconds": 0.09646991599998955,
+        "maximum_seconds": 0.10092759700000897,
+        "target_seconds": 0.5,
+        "target_met": true,
+        "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+        "output_bytes": 21700
+      },
+      "disabled": {
+        "samples": [
+          {
+            "seconds": 1.0468037600000457,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 1.0422103060000154,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 1.0445525350000366,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 1.0482403980000186,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 1.039954898000019,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          }
+        ],
+        "median_seconds": 1.0445525350000366,
+        "minimum_seconds": 1.039954898000019,
+        "maximum_seconds": 1.0482403980000186,
+        "target_seconds": null,
+        "target_met": null,
+        "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+        "output_bytes": 21700
+      },
+      "hook_warm": {
+        "samples": [
+          {
+            "seconds": 0.09178403600003548,
+            "exit_code": 2,
+            "output_sha256": "984f4a6eb84376a414b636c1c68060aa3d57767bca0d75b4859d7ec6be615aac",
+            "output_bytes": 217
+          },
+          {
+            "seconds": 0.0914774560000069,
+            "exit_code": 2,
+            "output_sha256": "984f4a6eb84376a414b636c1c68060aa3d57767bca0d75b4859d7ec6be615aac",
+            "output_bytes": 217
+          },
+          {
+            "seconds": 0.09113182199996572,
+            "exit_code": 2,
+            "output_sha256": "984f4a6eb84376a414b636c1c68060aa3d57767bca0d75b4859d7ec6be615aac",
+            "output_bytes": 217
+          },
+          {
+            "seconds": 0.09112591999996766,
+            "exit_code": 2,
+            "output_sha256": "984f4a6eb84376a414b636c1c68060aa3d57767bca0d75b4859d7ec6be615aac",
+            "output_bytes": 217
+          },
+          {
+            "seconds": 0.09671810099996492,
+            "exit_code": 2,
+            "output_sha256": "984f4a6eb84376a414b636c1c68060aa3d57767bca0d75b4859d7ec6be615aac",
+            "output_bytes": 217
+          }
+        ],
+        "median_seconds": 0.0914774560000069,
+        "minimum_seconds": 0.09112591999996766,
+        "maximum_seconds": 0.09671810099996492,
+        "target_seconds": 0.05,
+        "target_met": false,
+        "output_sha256": "984f4a6eb84376a414b636c1c68060aa3d57767bca0d75b4859d7ec6be615aac",
+        "output_bytes": 217
+      },
+      "preview_warm": {
+        "status": "timeout",
+        "timeout_seconds": 300,
+        "samples": [],
+        "elapsed_seconds": 300.008406759,
+        "median_seconds": null,
+        "target_seconds": null,
+        "target_met": null
+      }
+    }
+  },
+  "baseline": {
+    "binary": "/home/runner/work/seiso/seiso/baseline/target/release/seiso",
+    "binary_sha256": "459598efb042f976b80046856eb2254e123c8007785090e96880024866649c64",
+    "version": "seiso 0.0.0",
+    "cache_supported": true,
+    "cache_mode_note": "cold clears only seiso's parse cache; filesystem page cache is uncontrolled",
+    "cold_warm_disabled_equal": true,
+    "hook_matches_selected_report": true,
+    "modes": {
+      "cold": {
+        "samples": [
+          {
+            "seconds": 2.27272617899996,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 2.304389606999962,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 2.269110944999966,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 2.221621763999906,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 2.329423823999946,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          }
+        ],
+        "median_seconds": 2.27272617899996,
+        "minimum_seconds": 2.221621763999906,
+        "maximum_seconds": 2.329423823999946,
+        "target_seconds": 1.0,
+        "target_met": false,
+        "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+        "output_bytes": 21700
+      },
+      "warm": {
+        "samples": [
+          {
+            "seconds": 2.2412172709999822,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 2.2060759149999285,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 2.313716709000005,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 2.2682390850000047,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 2.2346932949999427,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          }
+        ],
+        "median_seconds": 2.2412172709999822,
+        "minimum_seconds": 2.2060759149999285,
+        "maximum_seconds": 2.313716709000005,
+        "target_seconds": 0.5,
+        "target_met": false,
+        "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+        "output_bytes": 21700
+      },
+      "disabled": {
+        "samples": [
+          {
+            "seconds": 2.3022087459999057,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 2.221133431999988,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 2.3034386330000416,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 2.334933766000063,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          },
+          {
+            "seconds": 2.3187010749999217,
+            "exit_code": 1,
+            "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+            "output_bytes": 21700
+          }
+        ],
+        "median_seconds": 2.3034386330000416,
+        "minimum_seconds": 2.221133431999988,
+        "maximum_seconds": 2.334933766000063,
+        "target_seconds": null,
+        "target_met": null,
+        "output_sha256": "7a06679a25ad760ae4449c44101d7b3d1ec20194dd0af76f3b3a4de071ef972d",
+        "output_bytes": 21700
+      },
+      "hook_warm": {
+        "samples": [
+          {
+            "seconds": 0.017980620999992425,
+            "exit_code": 2,
+            "output_sha256": "984f4a6eb84376a414b636c1c68060aa3d57767bca0d75b4859d7ec6be615aac",
+            "output_bytes": 217
+          },
+          {
+            "seconds": 0.01771097899995766,
+            "exit_code": 2,
+            "output_sha256": "984f4a6eb84376a414b636c1c68060aa3d57767bca0d75b4859d7ec6be615aac",
+            "output_bytes": 217
+          },
+          {
+            "seconds": 0.01791384599994217,
+            "exit_code": 2,
+            "output_sha256": "984f4a6eb84376a414b636c1c68060aa3d57767bca0d75b4859d7ec6be615aac",
+            "output_bytes": 217
+          },
+          {
+            "seconds": 0.018463470000028792,
+            "exit_code": 2,
+            "output_sha256": "984f4a6eb84376a414b636c1c68060aa3d57767bca0d75b4859d7ec6be615aac",
+            "output_bytes": 217
+          },
+          {
+            "seconds": 0.01794932199993582,
+            "exit_code": 2,
+            "output_sha256": "984f4a6eb84376a414b636c1c68060aa3d57767bca0d75b4859d7ec6be615aac",
+            "output_bytes": 217
+          }
+        ],
+        "median_seconds": 0.01794932199993582,
+        "minimum_seconds": 0.01771097899995766,
+        "maximum_seconds": 0.018463470000028792,
+        "target_seconds": 0.05,
+        "target_met": true,
+        "output_sha256": "984f4a6eb84376a414b636c1c68060aa3d57767bca0d75b4859d7ec6be615aac",
+        "output_bytes": 217
+      }
+    }
+  },
+  "comparison": {
+    "cold": {
+      "current_seconds": 0.7281422780000071,
+      "baseline_seconds": 2.27272617899996,
+      "ratio": 0.32038275650100645,
+      "regression_over_ten_percent": false,
+      "output_equal": true
+    },
+    "warm": {
+      "current_seconds": 0.096971361000044,
+      "baseline_seconds": 2.2412172709999822,
+      "ratio": 0.04326727366186032,
+      "regression_over_ten_percent": false,
+      "output_equal": true
+    },
+    "hook_warm": {
+      "current_seconds": 0.0914774560000069,
+      "baseline_seconds": 0.01794932199993582,
+      "ratio": 5.096429603320615,
+      "regression_over_ten_percent": true,
+      "output_equal": true
+    }
+  },
+  "latency_targets_met_locally": false,
+  "standard_linux_ci_acceptance": false
+}

@@ -79,6 +79,12 @@ source ranges. Report TP, FP, uncertain, sample count, precision, and
 language/kind groups for each split. A rule with no holdout diagnoses has
 unavailable precision, rather than a perfect score.
 
+Stage completion and stable promotion are separate decisions. A complete
+report may establish that natural samples are absent or that a rule is too
+noisy. Keep that rule in preview; constructed cases do not fill the natural
+sample requirement. Promotion also needs a review of source diversity and
+annotation quality, not just a numeric score.
+
 Compare two reports over the same locked inputs:
 
 ```sh

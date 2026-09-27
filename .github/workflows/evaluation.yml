@@ -8,6 +8,11 @@ on:
         type: string
         required: false
         default: ''
+      preview_stress:
+        description: 'Also measure the dense preview workload (up to five minutes per sample)'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -22,6 +27,7 @@ jobs:
     timeout-minutes: 30
     env:
       BASELINE_REF: ${{ inputs.baseline_ref }}
+      PREVIEW_STRESS: ${{ inputs.preview_stress }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -87,6 +93,9 @@ jobs:
         shell: bash
         run: |
           options=()
+          if test "$PREVIEW_STRESS" = true; then
+            options+=(--preview-stress)
+          fi
           if test -n "$BASELINE_REF"; then
             options+=(--baseline-binary baseline/target/release/seiso)
           fi

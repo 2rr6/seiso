@@ -22,7 +22,7 @@ import time
 FILE_COUNT = 1_000
 BYTES_PER_FILE = 10_000
 FIXTURE_VERSION = 1
-TARGETS_SECONDS = {"cold": 1.0, "warm": 0.5, "hook_warm": 0.05}
+TARGETS_SECONDS = {"cold": 1.0, "warm": 0.5, "hook_warm": 0.15}
 
 
 def sha256(data: bytes) -> str:
@@ -149,7 +149,7 @@ def timed_run(command: list[str], cwd: Path, output: Path, payload: bytes | None
         timer.start()
         try:
             # wait(timeout) uses polling sleeps on POSIX. A separate watchdog lets
-            # communicate block in waitpid, retaining sub-50 ms timing precision.
+            # communicate block in waitpid without adding polling delays.
             process.communicate(input=payload)
         finally:
             timer.cancel()
@@ -257,7 +257,7 @@ def main() -> int:
     parser.add_argument("--workdir", type=Path, help="Parent of temporary input files; use native Linux storage on Linux")
     parser.add_argument("--repetitions", type=int, default=5)
     parser.add_argument("--timeout", type=float, default=300)
-    parser.add_argument("--skip-preview", action="store_true")
+    parser.add_argument("--preview-stress", action="store_true", help="Also measure the dense preview workload; timeouts are reported separately")
     parser.add_argument("--enforce-targets", action="store_true", help="Fail on unmet latency targets; requires a standard Linux CI run")
     parser.add_argument("--enforce-regression", action="store_true", help="Fail if any baseline comparison regresses by more than ten percent")
     args = parser.parse_args()
@@ -279,7 +279,7 @@ def main() -> int:
         workspace = base / "fixture"
         report["fixture"] = create_fixture(workspace)
         report["input_filesystem_path"] = str(base)
-        report["current"] = measure_binary(binary, workspace, base / "current", args.repetitions, args.timeout, not args.skip_preview)
+        report["current"] = measure_binary(binary, workspace, base / "current", args.repetitions, args.timeout, args.preview_stress)
         if args.baseline_binary:
             report["baseline"] = measure_binary(args.baseline_binary.resolve(strict=True), workspace, base / "baseline", args.repetitions, args.timeout, False)
             report["comparison"] = comparison(report["current"], report["baseline"])
