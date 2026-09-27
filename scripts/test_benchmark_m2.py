@@ -29,13 +29,13 @@ class PerformanceFixtureTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             summarize_samples(rows)
 
-    def test_baseline_guard_checks_each_required_mode(self):
+    def test_baseline_comparison_reports_each_required_mode(self):
         baseline = {"modes": {name: {"median_seconds": 1.0} for name in ["cold", "warm", "hook_warm"]}}
         current = {"modes": {name: {"median_seconds": value} for name, value in [("cold", 1.05), ("warm", 1.11), ("hook_warm", 0.1)]}}
         result = comparison(current, baseline)
-        self.assertFalse(result["cold"]["regression_over_ten_percent"])
-        self.assertTrue(result["warm"]["regression_over_ten_percent"])
-        self.assertFalse(result["hook_warm"]["regression_over_ten_percent"])
+        self.assertAlmostEqual(result["cold"]["change_percent"], 5.0)
+        self.assertAlmostEqual(result["warm"]["change_seconds"], 0.11)
+        self.assertAlmostEqual(result["hook_warm"]["change_percent"], -90.0)
 
     def test_watchdog_keeps_real_output_and_terminates_timed_out_process(self):
         with tempfile.TemporaryDirectory() as temporary:

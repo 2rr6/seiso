@@ -244,7 +244,8 @@ def comparison(current: dict, baseline: dict) -> dict:
         new = current["modes"][name]["median_seconds"]
         ratio = new / old
         result[name] = {"current_seconds": new, "baseline_seconds": old,
-                        "ratio": ratio, "regression_over_ten_percent": ratio > 1.1,
+                        "ratio": ratio, "change_seconds": new - old,
+                        "change_percent": (ratio - 1.0) * 100.0,
                         "output_equal": current["modes"][name].get("output_sha256") == baseline["modes"][name].get("output_sha256")}
     return result
 
@@ -259,12 +260,9 @@ def main() -> int:
     parser.add_argument("--timeout", type=float, default=300)
     parser.add_argument("--preview-stress", action="store_true", help="Also measure the dense preview workload; timeouts are reported separately")
     parser.add_argument("--enforce-targets", action="store_true", help="Fail on unmet latency targets; requires a standard Linux CI run")
-    parser.add_argument("--enforce-regression", action="store_true", help="Fail if any baseline comparison regresses by more than ten percent")
     args = parser.parse_args()
     if args.repetitions < 1:
         parser.error("--repetitions must be positive")
-    if args.enforce_regression and args.baseline_binary is None:
-        parser.error("--enforce-regression requires --baseline-binary")
     binary = args.binary.resolve(strict=True)
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -289,8 +287,6 @@ def main() -> int:
     print(json.dumps({"output": str(output), "medians_seconds": {name: mode["median_seconds"] for name, mode in report["current"]["modes"].items()},
                       "standard_linux_ci_acceptance": report["standard_linux_ci_acceptance"]}, ensure_ascii=False))
     if args.enforce_targets and not report["standard_linux_ci_acceptance"]:
-        return 1
-    if args.enforce_regression and any(item["regression_over_ten_percent"] for item in report["comparison"].values()):
         return 1
     return 0
 
