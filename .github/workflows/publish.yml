@@ -111,7 +111,7 @@ jobs:
         shell: bash
         run: |
           python -m pip install dist/*.whl
-          seiso --version
+          python scripts/verify_installation.py --python-package
           seiso rule KND001
           seiso check README.md --select KND --output-format json > checked.json
           python -c "import json; assert json.load(open('checked.json', encoding='utf-8')) == []"
@@ -156,7 +156,7 @@ jobs:
       - run: python scripts/release.py npm
       - name: Exercise the packed npm executable
         run: |
-          npm exec --yes --package ./dist/*.tgz -- seiso --version
+          python scripts/verify_installation.py -- npm exec --yes --package ./dist/*.tgz -- seiso
           npm exec --yes --package ./dist/*.tgz -- seiso rule KND001
           npm exec --yes --package ./dist/*.tgz -- seiso check README.md --select KND --output-format json > checked.json
           python -c "import json; assert json.load(open('checked.json', encoding='utf-8')) == []"

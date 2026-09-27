@@ -95,6 +95,7 @@ def crate_exists(name, version):
 
 
 def publish_crates(version, execute=False):
+    parse_version(version)
     command = ["cargo", "publish" if execute else "package", "--package", "seiso", "--locked", "--registry", "crates-io"]
     if not execute:
         run(command)
@@ -106,6 +107,7 @@ def publish_crates(version, execute=False):
 
 
 def publish_npm(version, directory, execute=False):
+    stage = parse_version(version)[1]
     archives = sorted(directory.glob("*.tgz"))
     if len(archives) != 1:
         raise ValueError(f"Expected exactly one npm archive in {directory}")
@@ -125,7 +127,7 @@ def publish_npm(version, directory, execute=False):
     # npm publish --dry-run rejects an existing version, blocking partial-release retries.
     # Packing the tested archive validates it without requiring registry availability.
     command = (["npm", "publish", str(archive), "--access", "public", "--ignore-scripts",
-                "--registry", NPM_REGISTRY, "--tag", "next" if parse_version(version)[1] else "latest"] if execute else
+                "--registry", NPM_REGISTRY, "--tag", stage or "latest"] if execute else
                ["npm", "pack", str(archive), "--dry-run", "--ignore-scripts"])
     run(command)
 

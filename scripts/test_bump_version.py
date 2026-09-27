@@ -2,7 +2,9 @@ from pathlib import Path
 import tempfile
 import tomllib
 import unittest
+from unittest.mock import patch
 
+import bump_version
 from bump_version import next_version, plan_bump
 
 
@@ -35,15 +37,19 @@ class BumpVersionTests(unittest.TestCase):
     def test_prerelease_ordering_and_promotion(self):
         for current, requested, expected in [
             ("1.2.3", "1.2.4-alpha.0", "1.2.4-alpha.0"),
+            ("1.2.4-alpha.9", "v1.2.4-alpha.10", "1.2.4-alpha.10"),
             ("1.2.4-alpha.9", "1.2.4-beta.1", "1.2.4-beta.1"),
             ("1.2.4-beta.1", "v1.2.4-rc.1", "1.2.4-rc.1"),
             ("1.2.4-rc.2", "1.2.4-rc.10", "1.2.4-rc.10"),
             ("1.2.4-rc.1", "patch", "1.2.4"),
+            ("1.2.4-alpha.10", "1.2.4", "1.2.4"),
+            ("1.2.4-beta.1", "patch", "1.2.4"),
         ]:
             with self.subTest(current=current, requested=requested):
                 self.assertEqual(next_version(current, requested), expected)
         for current, requested in [("1.2.3", "1.2.3-rc.1"),
                                    ("1.2.4-rc.1", "1.2.4-beta.9"),
+                                   ("1.2.4-alpha.10", "1.2.4-alpha.9"),
                                    ("1.2.4-alpha.2", "1.2.4-alpha.1")]:
             with self.subTest(current=current, requested=requested), self.assertRaisesRegex(ValueError, "greater"):
                 next_version(current, requested)
@@ -78,6 +84,39 @@ class BumpVersionTests(unittest.TestCase):
         (self.root / "Cargo.lock").write_text('version = 4\n')
         with self.assertRaisesRegex(ValueError, "must contain"):
             plan_bump(self.root, "1.2.3", "1.2.4")
+
+    def test_prerelease_bump_plans_canonical_versions_and_note_filename(self):
+        for stage in ["alpha", "beta", "rc"]:
+            with self.subTest(stage=stage):
+                version = next_version("1.2.3", f"v1.2.4-{stage}.1")
+                changes = plan_bump(self.root, "1.2.3", version, "Preview")
+                self.assertEqual(tomllib.loads(changes[self.root / "Cargo.toml"])["package"]["version"], version)
+                self.assertEqual(tomllib.loads(changes[self.root / "Cargo.lock"])["package"][0]["version"], version)
+                self.assertIn(f'"version": "{version}"', changes[self.root / "npm/seiso/package.json"])
+                self.assertEqual(changes[self.root / f"docs/release-notes/{version}.md"], "## Preview\n\n")
+
+    @patch("bump_version.release_metadata")
+    def test_invalid_or_lower_request_does_not_write_any_file(self, metadata):
+        metadata.return_value = "1.2.3"
+        before = {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+        for version in ["1.2.3-alpha.10", "1.2.2", "1.2.3", "1.3.0-beta.01", "1.3.0-dev.1"]:
+            with self.subTest(version=version), patch("bump_version.ROOT", self.root), \
+                    patch("sys.argv", ["bump_version.py", version]), self.assertRaises(ValueError):
+                bump_version.main()
+        self.assertEqual(before, {p: p.read_bytes() for p in before})
+
+    def test_version_drift_leaves_every_file_unchanged(self):
+        for name in ["Cargo.toml", "Cargo.lock", "npm/seiso/package.json"]:
+            with self.subTest(name=name):
+                path = self.root / name
+                original = path.read_text()
+                path.write_text(original.replace("1.2.3", "1.2.4-rc.1"))
+                before = {p: p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
+                with self.assertRaises(ValueError):
+                    plan_bump(self.root, "1.2.3", "1.3.0-alpha.1", "Preview")
+                self.assertEqual(before, {p: p.read_bytes() for p in before})
+                self.assertFalse((self.root / "docs/release-notes").exists())
+                path.write_text(original)
 
 
 if __name__ == "__main__":
