@@ -4,6 +4,9 @@ kind: howto
 
 # Publish seiso
 
+Cargo and PyPI use the package name `seiso`. npm uses `@scarletkc/seiso`.
+All three installations provide the `seiso` executable.
+
 The Cargo workspace version is the release authority. Keep the npm version
 in `npm/seiso/package.json` equal to it; the packaging script rejects mismatches.
 PyPI reads the version from Cargo through maturin.

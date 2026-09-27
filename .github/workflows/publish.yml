@@ -77,8 +77,8 @@ jobs:
       - run: npm pack ./npm/seiso --pack-destination dist
       - name: Exercise the packed npm executable
         run: |
-          npm exec --yes --package ./dist/seiso-*.tgz -- seiso --version
-          npm exec --yes --package ./dist/seiso-*.tgz -- seiso parse README.md --output-format json > parsed.json
+          npm exec --yes --package ./dist/*.tgz -- seiso --version
+          npm exec --yes --package ./dist/*.tgz -- seiso parse README.md --output-format json > parsed.json
           python -c "import json; r=json.load(open('parsed.json', encoding='utf-8')); assert len(r['files']) == 1 and not r['errors']"
       - uses: actions/upload-artifact@v4
         with:

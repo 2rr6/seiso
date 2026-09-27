@@ -1,5 +1,5 @@
 {
-  "name": "seiso",
+  "name": "@scarletkc/seiso",
   "version": "0.0.0",
   "description": "Inspect Markdown structure and documentation policy",
   "license": "MIT",

@@ -21,7 +21,7 @@ class PackagingTests(unittest.TestCase):
         self.wheels.mkdir()
         self.output.mkdir()
         (self.root / "Cargo.toml").write_text('[workspace.package]\nversion = "0.0.0"\n', encoding="utf-8")
-        (self.output / "package.json").write_text('{"name":"seiso","version":"0.0.0"}', encoding="utf-8")
+        (self.output / "package.json").write_text('{"name":"@scarletkc/seiso","version":"0.0.0"}', encoding="utf-8")
         (self.root / "README.md").write_text("Readme", encoding="utf-8")
         (self.root / "LICENSE").write_text("License", encoding="utf-8")
 
