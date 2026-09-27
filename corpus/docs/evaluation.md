@@ -55,8 +55,36 @@ Natural precision is unavailable when there are no samples.
 
 An accepted protocol exception is supplied explicitly with `--protocol`.
 The acceptance receipt must match the syntax audit and conformance test
-sources. Constructed protocol cases never enter natural precision counts.
+sources at its accepted Git revision. New receipts record that commit in
+`source_revision`; receipts without it require `--protocol-source-ref`.
+The summary records the resolved commit and receipt hash. Constructed
+protocol cases never enter natural precision counts.
 See the [M1 protocol decision](../../docs/evaluation/m1-gate-proposal.md).
+
+### Replay historical evidence
+
+Replay reads accepted test sources from Git, so subsequent moves or refactors
+do not invalidate a frozen receipt. It verifies historical evidence and does
+not establish that the current implementation passes those tests. Keep the
+original report, annotations, acceptance receipt, and summary unchanged; use
+`--output` for a new replay summary.
+
+The checked-in M1 receipt predates `source_revision`. Its accepted test hashes
+match commit `b5651d290a261d603479d4b75538277a49dd0725`:
+
+```sh
+python scripts/summarize_m1.py corpus/results/m1/natural-v1 --protocol corpus/results/m1/protocol-acceptance.json --protocol-source-ref b5651d290a261d603479d4b75538277a49dd0725 --output target/m1-replay.json
+```
+
+Fetch that revision if a shallow checkout does not contain it. To check current
+protocol behavior, run the current contract tests separately:
+
+```sh
+cargo test --locked --test engine --test suppression --test acceptance_contract
+```
+
+Fresh rule-promotion claims also require a new evaluation and review against the
+current implementation. A historical summary is not a replacement for them.
 
 ## Cross-file evaluation
 

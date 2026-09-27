@@ -6,6 +6,7 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 
 RULES = ["KND001", "KND002", "STL001", "STL003", "PTR001", "PTR003", "LNK001", "RAT002", "VOX001", "SUP001", "SUP002"]
 CONSISTENCY = {"KND001", "KND002", "LNK001", "SUP001", "SUP002"}
@@ -75,32 +76,61 @@ def summarize(report, report_hash, annotation_files, protocol_accepted=False):
         "m1_exit_passed": all(results[code]["eligible_for_stable"] for code in CONSISTENCY)}
 
 
+def verify_protocol(path, root, source_ref=None):
+    protocol = json.loads(path.read_bytes())
+    audit = path.parent / "syntax-audit.json"
+    if protocol["syntax_audit_sha256"] != sha(audit.read_bytes()):
+        raise ValueError("Protocol audit differs from its acceptance receipt")
+    recorded_ref = protocol.get("source_revision")
+    if not (source_ref or recorded_ref):
+        raise ValueError("Protocol receipt has no source_revision; pass --protocol-source-ref with its accepted Git revision")
+
+    def git(*args):
+        result = subprocess.run(["git", *args], cwd=root, capture_output=True, check=False)
+        if result.returncode:
+            raise ValueError(f"Cannot read accepted protocol sources: {result.stderr.decode('utf-8', errors='replace').strip()}")
+        return result.stdout
+
+    revision = git("rev-parse", "--verify", "--end-of-options", f"{source_ref or recorded_ref}^{{commit}}").decode().strip()
+    if recorded_ref and source_ref:
+        recorded = git("rev-parse", "--verify", "--end-of-options", f"{recorded_ref}^{{commit}}").decode().strip()
+        if revision != recorded:
+            raise ValueError("--protocol-source-ref differs from the receipt's source_revision")
+    for name, expected in protocol["test_sources"].items():
+        if sha(git("show", f"{revision}:{name}")) != expected:
+            raise ValueError(f"Contract test differs from the acceptance receipt at {revision}: {name}")
+    accepted = (protocol["status"] == "accepted" and protocol["owner_approved"]
+                and protocol["conformance_passed"] and set(protocol["approved_rules"]) == PROTOCOL)
+    return accepted, revision
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run", type=Path)
     parser.add_argument("--protocol", type=Path)
+    parser.add_argument("--protocol-source-ref", help="Git revision of accepted protocol test sources for historical replay")
+    parser.add_argument("--output", type=Path, help="Summary destination (defaults to RUN/summary.json)")
     args = parser.parse_args()
+    if args.protocol_source_ref and not args.protocol:
+        parser.error("--protocol-source-ref requires --protocol")
     packed = (args.run / "diagnostics.json.gz").read_bytes()
     report_hash = sha(packed)
     receipt = json.loads((args.run / "run.json").read_bytes())
     if receipt["report_sha256"] != report_hash:
         raise ValueError("Report differs from its frozen receipt")
     accepted = False
+    source_revision = None
     if args.protocol:
-        protocol = json.loads(args.protocol.read_bytes())
-        audit = args.protocol.parent / "syntax-audit.json"
-        if protocol["syntax_audit_sha256"] != sha(audit.read_bytes()):
-            raise ValueError("Protocol audit differs from its acceptance receipt")
         root = Path(__file__).resolve().parent.parent
-        for path, expected in protocol["test_sources"].items():
-            if sha((root / path).read_bytes()) != expected:
-                raise ValueError(f"Contract test changed after acceptance: {path}")
-        accepted = protocol["status"] == "accepted" and protocol["owner_approved"] and protocol["conformance_passed"] and set(protocol["approved_rules"]) == PROTOCOL
+        accepted, source_revision = verify_protocol(args.protocol, root, args.protocol_source_ref)
     paths = sorted(args.run.glob("labels-*.json"))
     summary = summarize(json.loads(gzip.decompress(packed)), report_hash, [json.loads(path.read_bytes()) for path in paths], accepted)
     summary["annotations"] = {path.name: sha(path.read_bytes()) for path in paths}
     summary["protocol_receipt_sha256"] = sha(args.protocol.read_bytes()) if args.protocol else None
-    (args.run / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+    summary["protocol_source_revision"] = source_revision
+    output = args.output or args.run / "summary.json"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
     print(json.dumps({"m1_exit_passed": summary["m1_exit_passed"], "rules": {code: rule["decision"] for code, rule in summary["rules"].items()}}, sort_keys=True))
 
 
