@@ -1,6 +1,13 @@
 name: Evaluation
 
 on:
+  pull_request:
+    paths:
+      - 'crates/**'
+      - 'Cargo.*'
+      - 'corpus/**'
+      - 'scripts/**'
+      - '.github/workflows/evaluation.yml'
   workflow_dispatch:
     inputs:
       baseline_ref:
@@ -13,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: evaluation-${{ github.ref }}
+  group: evaluation-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -21,16 +28,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      BASELINE_REF: ${{ inputs.baseline_ref }}
+      BASELINE_REF: ${{ inputs.baseline_ref || github.event.pull_request.base.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
           path: current
           persist-credentials: false
-      - if: inputs.baseline_ref != ''
+      - if: env.BASELINE_REF != ''
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.baseline_ref }}
+          ref: ${{ env.BASELINE_REF }}
           path: baseline
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
@@ -40,7 +47,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: current -> target
-      - if: inputs.baseline_ref != ''
+      - if: env.BASELINE_REF != ''
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: baseline -> target
@@ -89,6 +96,11 @@ jobs:
           options=()
           if test -n "$BASELINE_REF"; then
             options+=(--baseline-binary baseline/target/release/seiso)
+            if test -f baseline/scripts/benchmark_m2.py; then
+              options+=(--enforce-regression)
+            else
+              printf '%s\n' 'Establishing the M2 baseline after absolute latency gates pass; M1 timing remains informational.' >> "$GITHUB_STEP_SUMMARY"
+            fi
           fi
           python current/scripts/benchmark_m2.py \
             --binary current/target/release/seiso \
@@ -101,3 +113,38 @@ jobs:
           name: evaluation
           path: ${{ runner.temp }}/evaluation/
           if-no-files-found: ignore
+
+  comment:
+    needs: evaluate
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: evaluation
+          path: report
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            let body = fs.readFileSync('report/diff/changes.md', 'utf8');
+            if (Buffer.byteLength(body, 'utf8') > 60000) {
+              body = Buffer.from(body, 'utf8').subarray(0, 60000).toString('utf8') + '\n\nReport truncated.';
+            }
+            body += `\n\n[Complete workflow evidence](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              ...context.repo, issue_number, per_page: 100
+            });
+            const existing = comments.find(comment =>
+              comment.user.login === 'github-actions[bot]' &&
+              comment.body.startsWith('<!-- seiso-ecosystem -->'));
+            if (existing) {
+              await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ ...context.repo, issue_number, body });
+            }
