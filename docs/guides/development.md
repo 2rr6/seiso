@@ -107,7 +107,9 @@ The path classification is defined in
 [`is_documentation`](../../scripts/ci_scope.py); unavailable change history
 selects full validation. The `check` job requires the selected checks to pass.
 Further updates cancel an older run for the same PR or branch. Use the manual
-trigger to check another branch before opening a PR.
+trigger to check another branch before opening a PR. The
+[PR title workflow](../../.github/workflows/pr-title.yml) checks pull request
+titles against the [commit format](../../CONTRIBUTING.md#write-commits).
 
 Run [Evaluation](../../.github/workflows/evaluation.yml) manually from Actions
 for milestone acceptance, release validation, or substantial rule and parser

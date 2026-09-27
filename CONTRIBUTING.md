@@ -107,6 +107,8 @@ Commit messages follow
 
 Title the pull request with a Conventional Commits header, as for a commit.
 Pull requests are squash-merged, and the title becomes the commit on `main`.
+The [PR title workflow](.github/workflows/pr-title.yml) checks the title and
+runs again when you edit it.
 
 The description gives a reviewer the context that the diff cannot:
 
