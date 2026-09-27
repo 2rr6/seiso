@@ -175,7 +175,8 @@ fn incomplete_checks_preserve_diagnostics_and_override_exit_zero() {
         &["check", "good.md", "--exit-zero", "--output-format", "json"],
         None,
     );
-    assert_eq!(selected.status.code(), Some(2));
+    assert_eq!(selected.status.code(), Some(0));
+    assert!(selected.stderr.is_empty());
     assert_eq!(value(&output), value(&selected));
     let missing = run(
         root,
@@ -191,6 +192,94 @@ fn incomplete_checks_preserve_diagnostics_and_override_exit_zero() {
     );
     assert_eq!(missing.status.code(), Some(2));
     assert_eq!(value(&missing), value(&selected));
+}
+
+#[test]
+fn local_checks_and_stdin_ignore_unrelated_source_and_configuration_errors() {
+    let workspace = workspace();
+    let root = workspace.path();
+    write(root, "good.md", "# Original\n");
+    write(root, "broken-config/seiso.toml", "unexpected = true\n");
+    write(root, "broken-config/other.md", "# Other\n");
+    std::fs::write(root.join("unreadable.md"), [0xff]).unwrap();
+    let args = [
+        "check",
+        "good.md",
+        "--select",
+        "KND",
+        "--no-cache",
+        "--output-format",
+        "json",
+    ];
+    let selected = run(root, &args, None);
+    assert_eq!(selected.status.code(), Some(1));
+    assert!(selected.stderr.is_empty());
+    assert_eq!(value(&selected)[0]["code"], "KND001");
+    let stdin = run(
+        root,
+        &[
+            "check",
+            "--stdin-filename",
+            "good.md",
+            "--select",
+            "KND",
+            "--no-cache",
+            "--output-format",
+            "json",
+        ],
+        Some("---\nkind: reference\n---\n# Buffer\n"),
+    );
+    assert_eq!(stdin.status.code(), Some(0));
+    assert!(stdin.stderr.is_empty());
+    assert_eq!(value(&stdin), json!([]));
+    assert_eq!(
+        std::fs::read_to_string(root.join("good.md")).unwrap(),
+        "# Original\n"
+    );
+    let full = run(
+        root,
+        &["check", "--select", "KND", "--output-format", "json"],
+        None,
+    );
+    assert_eq!(full.status.code(), Some(2));
+    let errors = String::from_utf8_lossy(&full.stderr);
+    assert!(errors.contains("unreadable.md"));
+    assert!(errors.contains("broken-config/other.md"));
+}
+
+#[test]
+fn local_checks_ignore_unrelated_ignore_pattern_errors() {
+    let workspace = workspace();
+    let root = workspace.path();
+    write(root, "good.md", "---\nkind: reference\n---\n# Good\n");
+    write(root, "other/.gitignore", "[z-a]\n");
+    write(root, "other/other.md", "# Other\n");
+    let selected = run(
+        root,
+        &[
+            "check",
+            "good.md",
+            "--select",
+            "KND",
+            "--output-format",
+            "json",
+        ],
+        None,
+    );
+    assert_eq!(
+        selected.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&selected.stderr)
+    );
+    assert!(selected.stderr.is_empty());
+    let full = run(
+        root,
+        &["check", "--select", "KND", "--output-format", "json"],
+        None,
+    );
+    assert_eq!(full.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&full.stderr).contains("ignore"));
 }
 
 #[test]
@@ -442,7 +531,7 @@ fn symlinked_external_directories_are_not_traversed_or_reported_as_missing() {
     let output = run(root, &["check", "--output-format", "json"], None);
     assert_eq!(output.status.code(), Some(0));
     assert_eq!(value(&output), json!([]));
-    let policy = run(root, &["policy"], None);
+    let policy = run(root, &["policy", "--evaluate"], None);
     let report = value(&policy);
     assert_eq!(report["files"].as_array().unwrap().len(), 1);
     assert_eq!(
@@ -492,6 +581,18 @@ fn policy_exposes_effective_overrides_exclusions_generated_and_suppressions() {
     assert_eq!(
         report["files"][0]["suppressions"][0]["reason"],
         "The generator creates this page."
+    );
+    assert_eq!(
+        report["files"][0]["suppressions"][0]["states"]["LNK001"]["state"],
+        "not_evaluated"
+    );
+    let mut evaluated_args = args.to_vec();
+    evaluated_args.push("--evaluate");
+    let evaluated = run(root, &evaluated_args, None);
+    assert_eq!(evaluated.status.code(), Some(0));
+    assert_eq!(
+        value(&evaluated)["files"][0]["suppressions"][0]["states"]["LNK001"],
+        json!({"state":"active", "count":1})
     );
     assert_eq!(report["files"][1]["kind"]["value"], "generated");
     assert_eq!(report["files"][1]["enabled_rules"], json!([]));
@@ -552,6 +653,9 @@ fn rule_documents_are_available_and_future_features_are_rejected() {
     }
     for arguments in [
         vec!["rule", "LNK999"],
+        vec!["rule", "STL002"],
+        vec!["check", "--select", "STL002"],
+        vec!["check", "--preview", "--select", "STL002"],
         vec!["check", "--judge"],
         vec!["check", "--output-format", "yaml"],
     ] {
@@ -577,6 +681,7 @@ fn hook_uses_event_cwd_converts_exit_codes_and_keeps_stdout_empty() {
     assert!(output.stdout.is_empty());
     assert!(String::from_utf8_lossy(&output.stderr).contains("KND001"));
     write(root, "valid.md", "---\nkind: reference\n---\n# Valid\n");
+    std::fs::write(root.join("unreadable.md"), [0xff]).unwrap();
     let valid = run(root, &["hook", "claude-code"], Some(&event("valid.md")));
     assert_eq!(valid.status.code(), Some(0));
     assert!(valid.stdout.is_empty() && valid.stderr.is_empty());

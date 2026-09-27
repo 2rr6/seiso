@@ -147,6 +147,36 @@ fn editing_only_an_anchor_target_reports_affected_origins_and_matches_full_filte
 }
 
 #[test]
+fn selected_target_without_index_rules_still_reports_affected_origins() {
+    let root = workspace(
+        "preview=true\n[lint]\nselect=['LNK002']\n[lint.per-file-ignores]\n'reference.md'=['ALL']\n",
+    );
+    write(root.path(), "reference.md", "# Renamed\n");
+    write(
+        root.path(),
+        "guide.md",
+        "[Original](reference.md#original)\n",
+    );
+    let output = run(
+        root.path(),
+        &[
+            "check",
+            "reference.md",
+            "--no-cache",
+            "--output-format",
+            "json",
+        ],
+        None,
+    );
+    status(&output, 1);
+    let diagnostics = value(&output);
+    assert_eq!(diagnostics.as_array().unwrap().len(), 1);
+    assert_eq!(diagnostics[0]["filename"], "guide.md");
+    assert_eq!(diagnostics[0]["code"], "LNK002");
+    assert_eq!(diagnostics[0]["related"][0]["filename"], "reference.md");
+}
+
+#[test]
 fn selecting_a_directory_reports_links_targeting_the_directory_itself() {
     let root = workspace("preview=true\n[lint]\nselect=['PTR002']\n");
     write(
@@ -215,7 +245,7 @@ fn excluded_target_anchors_remain_unknown_and_do_not_stale_suppressions() {
         index["index"]["files"][0]["links"][0]["resolution"]["status"],
         "anchor_unknown"
     );
-    let policy = value(&run(root.path(), &["policy"], None));
+    let policy = value(&run(root.path(), &["policy", "--evaluate"], None));
     assert_eq!(
         policy["files"][0]["suppressions"][0]["states"]["LNK002"]["state"],
         "incomplete"
@@ -449,12 +479,21 @@ fn safe_fix_respects_selection_preserves_disabled_codes_and_is_idempotent_with_c
         std::fs::read_to_string(root.path().join("b.md")).unwrap(),
         source
     );
+    let fixed_path = root.path().join("a.md");
+    let original_permissions = std::fs::metadata(&fixed_path).unwrap().permissions();
+    let mut readonly = original_permissions.clone();
+    readonly.set_readonly(true);
+    std::fs::set_permissions(&fixed_path, readonly).unwrap();
+    let modified = std::fs::metadata(&fixed_path).unwrap().modified().unwrap();
     let repeated = run(
         root.path(),
         &["check", "a.md", "--fix", "--output-format", "json"],
         None,
     );
+    let unchanged = std::fs::metadata(&fixed_path).unwrap().modified().unwrap() == modified;
+    std::fs::set_permissions(&fixed_path, original_permissions).unwrap();
     status(&repeated, 0);
+    assert!(unchanged);
     assert_eq!(output.stdout, repeated.stdout);
     assert_eq!(
         std::fs::read_to_string(root.path().join("a.md")).unwrap(),
@@ -598,6 +637,42 @@ fn index_dump_is_cwd_independent_and_has_no_absolute_runtime_paths() {
     assert!(
         !String::from_utf8_lossy(&top.stdout).contains(&root.path().to_string_lossy().to_string())
     );
+}
+
+#[test]
+fn inspection_commands_do_not_turn_link_resolution_errors_into_lint_failures() {
+    let root = workspace(LINKS);
+    let target = format!("{}.md", "x".repeat(300));
+    write(
+        root.path(),
+        "guide.md",
+        &format!("<!-- seiso: allow-file LNK001 -- External content. -->\n\n[Target]({target})\n"),
+    );
+    let policy = run(root.path(), &["policy"], None);
+    status(&policy, 0);
+    assert!(policy.stderr.is_empty());
+    assert_eq!(value(&policy)["errors"], json!([]));
+    assert_eq!(
+        value(&policy)["files"][0]["suppressions"][0]["states"]["LNK001"]["state"],
+        "not_evaluated"
+    );
+    let index = run(root.path(), &["index", "--dump"], None);
+    status(&index, 0);
+    assert!(index.stderr.is_empty());
+    assert_eq!(value(&index)["errors"], json!([]));
+    assert_eq!(
+        value(&index)["index"]["files"][0]["links"][0]["resolution"]["status"],
+        "unreadable"
+    );
+    let evaluated = run(root.path(), &["policy", "--evaluate"], None);
+    status(&evaluated, 2);
+    assert!(!value(&evaluated)["errors"].as_array().unwrap().is_empty());
+    std::fs::write(root.path().join("unreadable.md"), [0xff]).unwrap();
+    for args in [&["policy"][..], &["index", "--dump"][..]] {
+        let output = run(root.path(), args, None);
+        status(&output, 2);
+        assert_eq!(value(&output)["errors"][0]["filename"], "unreadable.md");
+    }
 }
 
 #[test]

@@ -2,19 +2,14 @@
 
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 use globset::{GlobBuilder, GlobMatcher};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-pub const RULE_CODES: [&str; 27] = [
-    "KND001", "KND002", "STL001", "STL002", "STL003", "STL004", "PTR001", "PTR002", "PTR003",
-    "LNK001", "LNK002", "DUP001", "DUP002", "DUP003", "OWN001", "OWN002", "RAT001", "RAT002",
-    "ORD001", "ORD002", "MIX001", "VOX001", "VOX002", "VOX003", "EVD001", "SUP001", "SUP002",
-];
-
-pub const STABLE_RULE_CODES: [&str; 5] = ["KND001", "KND002", "LNK001", "SUP001", "SUP002"];
+use crate::paths::normalize;
+use crate::rules::{rule, rules};
 
 pub const KINDS: [&str; 8] = [
     "readme",
@@ -301,21 +296,30 @@ impl Config {
         kind: Option<&str>,
         overrides: &CliOverrides,
     ) -> Result<Vec<&'static str>, ConfigError> {
+        Ok(self
+            .selected_rules(path, overrides)?
+            .into_iter()
+            .filter(|code| rule(code).is_some_and(|rule| rule.applies_to_kind(kind)))
+            .collect())
+    }
+
+    /// Resolve selectors before parsing a document so callers can plan its dependencies.
+    pub fn selected_rules(
+        &self,
+        path: &Path,
+        overrides: &CliOverrides,
+    ) -> Result<Vec<&'static str>, ConfigError> {
         overrides.validate()?;
-        if kind == Some("generated") {
-            return Ok(Vec::new());
-        }
         let select = overrides
             .select
             .as_ref()
             .unwrap_or(&self.settings.lint.select);
         let selectors: Vec<_> = select.iter().chain(&overrides.extend_select).collect();
         let relative_path = self.relative_path(path);
-        let mut enabled: Vec<_> = RULE_CODES
-            .into_iter()
-            .filter(|code| {
-                self.settings.preview || overrides.preview || STABLE_RULE_CODES.contains(code)
-            })
+        let mut enabled: Vec<_> = rules()
+            .iter()
+            .filter(|rule| self.settings.preview || overrides.preview || rule.is_stable())
+            .map(|rule| rule.code)
             .filter(|code| {
                 let selected = selectors.iter().filter_map(|s| specificity(s, code)).max();
                 let ignored = self
@@ -331,7 +335,6 @@ impl Config {
                         relative_path.as_ref().is_some_and(|p| pattern.is_match(p))
                             && entries.iter().any(|s| specificity(s, code).is_some())
                     })
-                    && applies_to_kind(code, kind)
             })
             .collect();
         enabled.sort_unstable();
@@ -417,8 +420,8 @@ impl Workspace {
 
 pub fn validate_selector(selector: &str) -> Result<(), ConfigError> {
     if selector == "ALL"
-        || RULE_CODES.contains(&selector)
-        || (selector.len() == 3 && RULE_CODES.iter().any(|code| code.starts_with(selector)))
+        || rule(selector).is_some()
+        || (selector.len() == 3 && rules().iter().any(|rule| rule.code.starts_with(selector)))
     {
         Ok(())
     } else {
@@ -435,24 +438,6 @@ fn specificity(selector: &str, code: &str) -> Option<u8> {
         Some(0)
     } else {
         None
-    }
-}
-
-fn applies_to_kind(code: &str, kind: Option<&str>) -> bool {
-    let Some(kind) = kind.filter(|k| KINDS.contains(k)) else {
-        return ["KND", "LNK", "SUP"]
-            .iter()
-            .any(|prefix| code.starts_with(prefix));
-    };
-    let long_lived = ["readme", "howto", "reference", "runbook"].contains(&kind);
-    match code {
-        "STL001" | "STL002" | "STL003" | "STL004" | "MIX001" | "VOX001" | "EVD001" => long_lived,
-        "PTR001" | "PTR002" => kind != "changelog",
-        "RAT001" | "RAT002" => ["howto", "reference"].contains(&kind),
-        "ORD001" => kind == "howto",
-        "ORD002" => ["howto", "runbook"].contains(&kind),
-        "VOX003" => !["plan", "adr"].contains(&kind),
-        _ => true,
     }
 }
 
@@ -698,18 +683,4 @@ fn absolute(path: &Path) -> Result<PathBuf, ConfigError> {
             path: path.to_path_buf(),
             source,
         })
-}
-
-fn normalize(path: PathBuf) -> PathBuf {
-    let mut result = PathBuf::new();
-    for component in path.components() {
-        match component {
-            Component::CurDir => {}
-            Component::ParentDir => {
-                result.pop();
-            }
-            _ => result.push(component.as_os_str()),
-        }
-    }
-    result
 }

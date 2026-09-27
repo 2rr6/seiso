@@ -116,6 +116,34 @@ fn multiple_stale_diagnostics_share_one_deduplicated_edit() {
 }
 
 #[test]
+fn suppression_fixes_do_not_depend_on_diagnostic_wording() {
+    let document = parse("<!-- seiso: allow LNK001, PTR001 -- Historical. -->\n\nTarget.").unwrap();
+    let mut result = apply(
+        &document,
+        "guide.md",
+        vec![],
+        &codes(&["LNK001", "PTR001", "SUP002"]),
+        &BTreeSet::new(),
+    );
+    result.diagnostics.truncate(1);
+    result.diagnostics[0].message = "This exemption is no longer used.".into();
+    result.diagnostics[0].suggestion = "Delete it.".into();
+    attach_fixes(&document, &result.suppressions, &mut result.diagnostics);
+    assert_eq!(
+        apply_fixes(&document.source, &result.diagnostics)
+            .unwrap()
+            .unwrap(),
+        "<!-- seiso: allow PTR001 -- Historical. -->\n\nTarget."
+    );
+    assert!(
+        serde_json::to_value(&result.diagnostics[0])
+            .unwrap()
+            .get("unused_suppression_code")
+            .is_none()
+    );
+}
+
+#[test]
 fn suppressed_unused_codes_and_meta_declarations_are_preserved() {
     let source = "<!-- seiso: allow-file SUP002 -- Preserve historical exemptions. -->\n\n<!-- seiso: allow LNK001 -- Historical. -->\n\nTarget.";
     let result = check(source, vec![], &["LNK001", "SUP002"], &[]);

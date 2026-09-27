@@ -2,12 +2,12 @@
 
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use seiso::config::{CliOverrides, Config};
 use seiso::index::{IndexedFile, InventoryEntryKind, WorkspaceIndex};
 use seiso::md::Language;
-use seiso::rules::{CheckContext, PathStatus, WorkspaceFiles, check_raw_with_files, finish_check};
+use seiso::rules::{CheckContext, check_raw_with_files, finish_check};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -44,33 +44,6 @@ struct Output {
     result: seiso::rules::CheckResult,
 }
 
-struct Inventory {
-    entries: BTreeMap<String, InventoryEntryKind>,
-}
-
-impl WorkspaceFiles for Inventory {
-    fn status(&self, root: &Path, target: &Path) -> PathStatus {
-        let Ok(relative) = target.strip_prefix(root) else {
-            return PathStatus::Unknown;
-        };
-        if relative.as_os_str().is_empty() {
-            return PathStatus::Exists;
-        }
-        for ancestor in relative.ancestors() {
-            let key = ancestor.to_string_lossy().replace('\\', "/");
-            if self.entries.get(&key) == Some(&InventoryEntryKind::Unknown) {
-                return PathStatus::Unknown;
-            }
-        }
-        let key = relative.to_string_lossy().replace('\\', "/");
-        if self.entries.contains_key(&key) {
-            PathStatus::Exists
-        } else {
-            PathStatus::Missing
-        }
-    }
-}
-
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args_os().collect();
     if args.len() != 3 {
@@ -82,20 +55,18 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     for source in input.sources {
         let root = workspace.path().join(&source.id);
         let config = Config::parse(&source.config, &root)?;
-        let inventory = Inventory {
-            entries: source
-                .entries
-                .into_iter()
-                .map(|entry| {
-                    let kind = match entry.mode.as_str() {
-                        "040000" | "40000" => InventoryEntryKind::Directory,
-                        "100644" | "100755" => InventoryEntryKind::File,
-                        _ => InventoryEntryKind::Unknown,
-                    };
-                    (entry.path, kind)
-                })
-                .collect(),
-        };
+        let inventory = source
+            .entries
+            .into_iter()
+            .map(|entry| {
+                let kind = match entry.mode.as_str() {
+                    "040000" | "40000" => InventoryEntryKind::Directory,
+                    "100644" | "100755" => InventoryEntryKind::File,
+                    _ => InventoryEntryKind::Unknown,
+                };
+                (entry.path, kind)
+            })
+            .collect();
         let mut files = Vec::new();
         let mut inputs = BTreeMap::new();
         for input in source.documents {
@@ -116,7 +87,6 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                     },
                 )?
                 .into_iter()
-                .filter(|code| seiso::rules::IMPLEMENTED_RULES.contains(code))
                 .map(str::to_owned)
                 .collect();
             files.push(IndexedFile {
@@ -132,8 +102,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 return Err("duplicate input path".into());
             }
         }
-        let index = WorkspaceIndex::new(root.clone(), files, true)
-            .with_inventory(inventory.entries.clone());
+        let index = WorkspaceIndex::new(root.clone(), files, true).with_inventory(inventory);
         let mut cross = seiso::rules::cross_file::check(&index);
         if !cross.errors.is_empty() {
             return Err(format!("cross-file errors: {:?}", cross.errors).into());
@@ -150,7 +119,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                     ..CliOverrides::default()
                 },
             };
-            let mut raw = check_raw_with_files(&context, &inventory)?;
+            let mut raw = check_raw_with_files(&context, &index)?;
             raw.enabled_rules.extend(file.enabled_rules.iter().cloned());
             raw.diagnostics.extend(
                 cross

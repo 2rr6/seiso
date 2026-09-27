@@ -1,13 +1,14 @@
 //! Current workspace facts. Resolved paths and effective policy never enter the parse cache.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::io::ErrorKind;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 
 use crate::config::Config;
 use crate::diagnostics::Span;
 use crate::md::{BlockKind, Document, FragmentKind};
+use crate::paths::{LinkPathError, TargetStatus, local_link, local_target_status};
+use crate::rules::{PathStatus, WorkspaceFiles};
 use regex::Regex;
 use serde::Serialize;
 
@@ -106,7 +107,8 @@ impl WorkspaceIndex {
         self.anchor_spans.get(filename)?.get(anchor).copied()
     }
 
-    /// Resolve against the current filesystem; indexed stdin overlays exist even without a disk file.
+    /// Resolve local links using the frozen inventory when present, otherwise the filesystem.
+    /// Indexed stdin overlays exist even without a disk file.
     pub fn resolve_link(&self, source: &str, destination: &str) -> LinkResolution {
         let mut result = LinkResolution {
             target: None,
@@ -114,102 +116,29 @@ impl WorkspaceIndex {
             status: LinkStatus::AnchorUnknown,
             error: None,
         };
-        if destination.starts_with("//") || has_scheme(destination) {
-            result.status = LinkStatus::External;
-            return result;
-        }
-        if percent_decode(destination)
-            .is_some_and(|value| value.contains(['\0', '{', '}', '$', '<', '>']))
-        {
-            result.status = LinkStatus::Template;
-            return result;
-        }
-        let (before_anchor, raw_anchor) = destination
-            .split_once('#')
-            .map_or((destination, None), |(path, anchor)| (path, Some(anchor)));
-        let raw_path = before_anchor.split('?').next().unwrap_or_default();
-        let Some(path) = percent_decode(raw_path) else {
-            return result;
+        let link = match local_link(&self.root, Path::new(source), destination) {
+            Ok(link) => link,
+            Err(error) => {
+                result.status = match error {
+                    LinkPathError::External => LinkStatus::External,
+                    LinkPathError::Template => LinkStatus::Template,
+                    LinkPathError::OutsideWorkspace => LinkStatus::OutsideWorkspace,
+                    LinkPathError::Unknown => LinkStatus::AnchorUnknown,
+                };
+                return result;
+            }
         };
-        let anchor = match raw_anchor {
-            Some(value) => match percent_decode(value) {
-                Some(value) => Some(value),
-                None => return result,
-            },
-            None => None,
-        };
-        if path.contains(['\0', '{', '}', '$', '<', '>'])
-            || anchor
-                .as_ref()
-                .is_some_and(|value| value.contains(['\0', '{', '}', '$', '<', '>']))
-        {
-            result.status = LinkStatus::Template;
-            return result;
-        }
-        if path.starts_with("//") || path.starts_with("\\\\") || has_scheme(&path) {
-            result.status = LinkStatus::External;
-            return result;
-        }
-        result.anchor = anchor;
-        let path = path.replace('\\', "/");
-        let target_path = normalize(&if path.is_empty() {
-            self.root.join(source)
-        } else if path.starts_with('/') {
-            self.root.join(path.trim_start_matches('/'))
-        } else {
-            self.root
-                .join(source)
-                .parent()
-                .unwrap_or(&self.root)
-                .join(path)
-        });
-        let Ok(relative) = target_path.strip_prefix(&self.root) else {
-            result.status = LinkStatus::OutsideWorkspace;
-            return result;
-        };
-        let mut target = relative.to_string_lossy().replace('\\', "/");
+        let mut target = link.location.target;
         result.target = Some(target.clone());
-        if let Some(inventory) = &self.inventory {
-            let mut ancestor = Some(target.as_str());
-            while let Some(path) = ancestor {
-                if inventory.get(path) == Some(&InventoryEntryKind::Unknown) {
-                    result.status = LinkStatus::AnchorUnknown;
-                    return result;
-                }
-                ancestor = path.rsplit_once('/').map(|(parent, _)| parent);
-            }
-            result.status = if self.file(&target).is_some() {
-                self.indexed_status(&target, result.anchor.as_deref())
-            } else {
-                match inventory.get(&target) {
-                    Some(InventoryEntryKind::Directory) => LinkStatus::Directory,
-                    Some(InventoryEntryKind::File)
-                        if result.anchor.as_ref().is_none_or(String::is_empty) =>
-                    {
-                        LinkStatus::File
-                    }
-                    Some(_) => LinkStatus::AnchorUnknown,
-                    None if target.is_empty() => LinkStatus::Directory,
-                    None => LinkStatus::Missing,
-                }
-            };
-            return result;
-        }
-        // Even a missing child beneath an outward symlink is outside the workspace.
-        if let Err(status) = contained(&self.root, &target_path) {
-            match status {
-                ContainmentError::Outside => result.status = LinkStatus::OutsideWorkspace,
-                ContainmentError::Io(error) => {
-                    result.status = LinkStatus::Unreadable;
-                    result.error = Some(error);
-                }
-            }
-            return result;
-        }
+        result.anchor = link.anchor;
+        let status = self.target_status(&link.location.path, &target);
         // Resolve native aliases only through filesystem identity. Lowercasing names
         // would incorrectly merge distinct files on case-sensitive filesystems.
-        if self.file(&target).is_none()
-            && let (Ok(actual), Ok(root)) = (target_path.canonicalize(), self.root.canonicalize())
+        if self.inventory.is_none()
+            && matches!(status, TargetStatus::File)
+            && self.file(&target).is_none()
+            && let (Ok(actual), Ok(root)) =
+                (link.location.path.canonicalize(), self.root.canonicalize())
             && let Ok(relative) = actual.strip_prefix(root)
         {
             let canonical = relative.to_string_lossy().replace('\\', "/");
@@ -218,26 +147,50 @@ impl WorkspaceIndex {
                 result.target = Some(target.clone());
             }
         }
-        if self.file(&target).is_none() {
-            match std::fs::metadata(&target_path) {
-                Ok(metadata) if metadata.is_dir() => result.status = LinkStatus::Directory,
-                Ok(_) => {
-                    result.status = if result.anchor.as_ref().is_none_or(String::is_empty) {
-                        LinkStatus::File
-                    } else {
-                        LinkStatus::AnchorUnknown
-                    }
-                }
-                Err(error) if missing(&error) => result.status = LinkStatus::Missing,
-                Err(error) => {
-                    result.status = LinkStatus::Unreadable;
-                    result.error = Some(format!("Cannot inspect link target {target:?}: {error}"));
-                }
+        result.status = match status {
+            TargetStatus::File if self.file(&target).is_some() => {
+                self.indexed_status(&target, result.anchor.as_deref())
             }
-        } else {
-            result.status = self.indexed_status(&target, result.anchor.as_deref());
-        }
+            TargetStatus::File if result.anchor.as_ref().is_none_or(String::is_empty) => {
+                LinkStatus::File
+            }
+            TargetStatus::File | TargetStatus::Unknown => LinkStatus::AnchorUnknown,
+            TargetStatus::Directory => LinkStatus::Directory,
+            TargetStatus::Missing => LinkStatus::Missing,
+            TargetStatus::OutsideWorkspace => LinkStatus::OutsideWorkspace,
+            TargetStatus::Unreadable(error) => {
+                result.error = Some(error);
+                LinkStatus::Unreadable
+            }
+        };
         result
+    }
+
+    fn target_status(&self, path: &Path, target: &str) -> TargetStatus {
+        if let Some(inventory) = &self.inventory {
+            let mut ancestor = Some(target);
+            while let Some(path) = ancestor {
+                if inventory.get(path) == Some(&InventoryEntryKind::Unknown) {
+                    return TargetStatus::Unknown;
+                }
+                ancestor = path.rsplit_once('/').map(|(parent, _)| parent);
+            }
+            if self.file(target).is_some() {
+                return TargetStatus::File;
+            }
+            return match inventory.get(target) {
+                Some(InventoryEntryKind::Directory) => TargetStatus::Directory,
+                Some(InventoryEntryKind::File) => TargetStatus::File,
+                Some(InventoryEntryKind::Unknown) => TargetStatus::Unknown,
+                None if target.is_empty() => TargetStatus::Directory,
+                None => TargetStatus::Missing,
+            };
+        }
+        match local_target_status(&self.root, path) {
+            status @ (TargetStatus::OutsideWorkspace | TargetStatus::Unreadable(_)) => status,
+            _ if self.file(target).is_some() => TargetStatus::File,
+            status => status,
+        }
     }
 
     fn indexed_status(&self, target: &str, anchor: Option<&str>) -> LinkStatus {
@@ -455,80 +408,14 @@ fn decode_numeric(number: &str, radix: u32) -> String {
         .to_string()
 }
 
-enum ContainmentError {
-    Outside,
-    Io(String),
-}
-
-fn contained(root: &Path, target: &Path) -> Result<(), ContainmentError> {
-    let root = root
-        .canonicalize()
-        .map_err(|error| ContainmentError::Io(format!("Cannot inspect workspace: {error}")))?;
-    for ancestor in target.ancestors() {
-        match ancestor.canonicalize() {
-            Ok(actual) => {
-                return if actual.starts_with(&root) {
-                    Ok(())
-                } else {
-                    Err(ContainmentError::Outside)
-                };
-            }
-            Err(error) if missing(&error) => {}
-            Err(error) => {
-                return Err(ContainmentError::Io(format!(
-                    "Cannot resolve link target: {error}"
-                )));
-            }
-        }
+impl WorkspaceFiles for WorkspaceIndex {
+    fn status(&self, _workspace_root: &Path, target: &Path) -> PathStatus {
+        let Ok(relative) = target.strip_prefix(&self.root) else {
+            return PathStatus::Unknown;
+        };
+        self.target_status(target, &relative.to_string_lossy().replace('\\', "/"))
+            .into()
     }
-    Err(ContainmentError::Outside)
-}
-
-fn missing(error: &std::io::Error) -> bool {
-    matches!(error.kind(), ErrorKind::NotFound | ErrorKind::NotADirectory)
-}
-
-fn has_scheme(value: &str) -> bool {
-    let Some((scheme, _)) = value.split_once(':') else {
-        return false;
-    };
-    scheme.starts_with(|c: char| c.is_ascii_alphabetic())
-        && scheme
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
-}
-
-fn percent_decode(value: &str) -> Option<String> {
-    let bytes = value.as_bytes();
-    let mut output = Vec::with_capacity(bytes.len());
-    let mut index = 0;
-    while index < bytes.len() {
-        if bytes[index] == b'%' {
-            output.push(
-                ((*bytes.get(index + 1)? as char).to_digit(16)? * 16
-                    + (*bytes.get(index + 2)? as char).to_digit(16)?) as u8,
-            );
-            index += 3;
-        } else {
-            output.push(bytes[index]);
-            index += 1;
-        }
-    }
-    String::from_utf8(output).ok()
-}
-
-fn normalize(path: &Path) -> PathBuf {
-    let mut normalized = PathBuf::new();
-    for component in path.components() {
-        match component {
-            Component::CurDir => {}
-            Component::ParentDir => {
-                normalized.pop();
-            }
-            _ => normalized.push(component.as_os_str()),
-        }
-    }
-    normalized
 }
 
 #[cfg(test)]

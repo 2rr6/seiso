@@ -46,15 +46,11 @@ pub fn attach_fixes(
     }
 }
 
-fn stale_code<'a>(diagnostic: &Diagnostic, record: &'a SuppressionRecord) -> Option<&'a str> {
-    // The suppression engine emits one diagnostic per code at the comment span.
-    // Matching that code also preserves stale codes whose SUP002 was suppressed.
-    record.codes.iter().find_map(|code| {
-        (record.states.get(code) == Some(&SuppressionState::Stale)
-            && diagnostic.message
-                == format!("Suppression for {code} did not suppress any diagnostic"))
-        .then_some(code.as_str())
-    })
+fn stale_code<'a>(diagnostic: &'a Diagnostic, record: &SuppressionRecord) -> Option<&'a str> {
+    diagnostic
+        .unused_suppression_code
+        .as_deref()
+        .filter(|code| record.states.get(*code) == Some(&SuppressionState::Stale))
 }
 
 fn declaration_edit(

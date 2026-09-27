@@ -2,7 +2,9 @@ use std::collections::BTreeSet;
 
 use seiso::diagnostics::{Diagnostic, RelatedLocation, Span};
 use seiso::md::parse;
-use seiso::rules::suppression::{SuppressionResult, SuppressionScope, SuppressionState, apply};
+use seiso::rules::suppression::{
+    SuppressionResult, SuppressionScope, SuppressionState, apply, inspect,
+};
 
 fn codes(values: &[&str]) -> BTreeSet<String> {
     values.iter().map(|value| (*value).to_owned()).collect()
@@ -28,6 +30,23 @@ fn run(source: &str, diagnostics: Vec<Diagnostic>, enabled: &[&str]) -> Suppress
         &codes(enabled),
         &BTreeSet::new(),
     )
+}
+
+#[test]
+fn inspection_reports_declaration_validity_without_assuming_rule_activity() {
+    let document = parse("<!-- seiso: allow-file LNK001, PTR001 -- Generated links. -->\n\n<!-- seiso: allow STL002 -- Planned rule. -->\n\n[Link](missing.md)").unwrap();
+    let records = inspect(&document, &codes(&["LNK001", "SUP001", "SUP002"]));
+    assert_eq!(records.len(), 2);
+    assert_eq!(records[0].states["LNK001"], SuppressionState::NotEvaluated);
+    assert_eq!(records[0].states["PTR001"], SuppressionState::RuleDisabled);
+    assert_eq!(records[1].states["STL002"], SuppressionState::Invalid);
+    assert!(
+        records[1]
+            .error
+            .as_ref()
+            .unwrap()
+            .contains("not a known full rule code")
+    );
 }
 
 #[test]

@@ -1,11 +1,11 @@
 //! Read-only workspace rules. Every comparison is between two observed blocks.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Component, Path, PathBuf};
 
 use crate::diagnostics::{Diagnostic, RelatedLocation, Span, sorted_diagnostics};
 use crate::index::{IndexedFile, LinkStatus, WorkspaceIndex};
 use crate::md::{BlockKind, Document, FragmentKind, Language};
+use crate::paths::normalize;
 
 const DUPLICATION_RULES: [&str; 5] = ["DUP001", "DUP002", "DUP003", "OWN001", "OWN002"];
 
@@ -26,28 +26,29 @@ pub fn check(index: &WorkspaceIndex) -> CrossReport {
         }
         check_links(index, file, &mut report);
     }
-    if index
-        .files
-        .iter()
-        .any(|file| DUPLICATION_RULES.iter().any(|code| enabled(file, code)))
-    {
+    let active = |code| index.files.iter().any(|file| enabled(file, code));
+    // OWN002 identifies ties from every comparison family.
+    let ownership = active("OWN002");
+    if active("DUP001") || active("OWN001") || ownership {
         let definitions = definition_units(index);
-        let dup_edges = similarity_edges(index, &definitions, false, false);
-        emit_owned(index, &definitions, &dup_edges, "DUP001", &mut report);
-        let own_edges = similarity_edges(index, &definitions, true, true);
-        emit_owned(index, &definitions, &own_edges, "OWN001", &mut report);
-        let sections = section_units(index);
-        let section_edges = restatement_edges(index, &sections, &mut report);
-        emit_owned(index, &sections, &section_edges, "DUP002", &mut report);
-        if index
-            .files
-            .iter()
-            .any(|file| enabled(file, "DUP003") || enabled(file, "OWN002"))
-        {
-            let paragraphs = paragraph_units(index);
-            let paragraph_edges = similarity_edges(index, &paragraphs, false, false);
-            emit_owned(index, &paragraphs, &paragraph_edges, "DUP003", &mut report);
+        if active("DUP001") || ownership {
+            let edges = similarity_edges(index, &definitions, false, false);
+            emit_owned(index, &definitions, &edges, "DUP001", &mut report);
         }
+        if active("OWN001") || ownership {
+            let edges = similarity_edges(index, &definitions, true, true);
+            emit_owned(index, &definitions, &edges, "OWN001", &mut report);
+        }
+    }
+    if active("DUP002") || ownership {
+        let sections = section_units(index);
+        let edges = restatement_edges(index, &sections, &mut report);
+        emit_owned(index, &sections, &edges, "DUP002", &mut report);
+    }
+    if active("DUP003") || ownership {
+        let paragraphs = paragraph_units(index);
+        let edges = similarity_edges(index, &paragraphs, false, false);
+        emit_owned(index, &paragraphs, &edges, "DUP003", &mut report);
     }
     // A tied definition can participate in more than one duplication rule.
     // Merge related locations, retaining the directly observed pairwise evidence.
@@ -134,8 +135,7 @@ fn check_links(index: &WorkspaceIndex, file: &IndexedFile, report: &mut CrossRep
                     .catalog_dirs
                     .iter()
                     .any(|catalog| {
-                        normalize(&file.config.directory.join(catalog.trim_end_matches('/')))
-                            == path
+                        normalize(file.config.directory.join(catalog.trim_end_matches('/'))) == path
                     });
                 if !allowed {
                     let mut diagnostic = Diagnostic::new(
@@ -183,20 +183,6 @@ struct Unit {
     heads: BTreeSet<String>,
     paragraph: bool,
     whole_document: bool,
-}
-
-fn normalize(path: &Path) -> PathBuf {
-    let mut normalized = PathBuf::new();
-    for component in path.components() {
-        match component {
-            Component::CurDir => {}
-            Component::ParentDir => {
-                normalized.pop();
-            }
-            _ => normalized.push(component.as_os_str()),
-        }
-    }
-    normalized
 }
 
 fn contains(outer: Span, inner: Span) -> bool {
@@ -625,12 +611,7 @@ fn restatement_edges(index: &WorkspaceIndex, units: &[Unit], report: &mut CrossR
         let Some((target_index, target_unit)) = target_section else {
             continue;
         };
-        let target_values = if resolution.anchor.is_none() {
-            identifiers(&target.document, Span::new(0, target.document.source.len()))
-        } else {
-            target_unit.values.clone()
-        };
-        let shared = unit.values.intersection(&target_values).count();
+        let shared = unit.values.intersection(&target_unit.values).count();
         let ratio = shared as f64 / unit.values.len() as f64;
         if shared >= file.config.settings.lint.dup.min_identifiers
             && ratio >= file.config.settings.lint.dup.min_jaccard

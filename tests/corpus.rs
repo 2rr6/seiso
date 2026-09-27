@@ -8,7 +8,7 @@ use std::path::{Component, Path};
 use seiso::config::{CliOverrides, Config};
 use seiso::diagnostics::{Diagnostic, SourceMap, Span};
 use seiso::rules::suppression::SuppressionScope;
-use seiso::rules::{CheckContext, IMPLEMENTED_RULES, check};
+use seiso::rules::{CheckContext, check, rule_codes};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
@@ -48,9 +48,8 @@ fn pinned_corpus_rule_engine_is_deterministic_and_preserves_source_locations() {
     let mut checks = 0;
     let mut bytes = 0;
     let virtual_workspace = tempfile::tempdir().expect("create a virtual path root");
-    let selected = IMPLEMENTED_RULES
-        .iter()
-        .filter(|code| **code != "LNK001")
+    let selected = rule_codes()
+        .filter(|code| *code != "LNK001")
         .map(|code| format!("'{code}'"))
         .collect::<Vec<_>>()
         .join(",");

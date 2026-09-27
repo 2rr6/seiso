@@ -236,6 +236,27 @@ fn unreadable_utf8_does_not_discard_other_documents() {
 }
 
 #[test]
+fn selected_parse_and_stdin_skip_unrelated_unreadable_sources_and_invalid_configs() {
+    let workspace = configured_workspace();
+    let root = workspace.path();
+    write(root, "guide.md", "# Guide\n");
+    write(root, "other/seiso.toml", "unexpected = true\n");
+    write(root, "other/page.md", "# Other\n");
+    std::fs::write(root.join("unreadable.md"), [0xff]).unwrap();
+    let selected = parse(root, &["guide.md"], None);
+    assert_eq!(selected.status.code(), Some(0));
+    assert!(selected.stderr.is_empty());
+    assert_eq!(json(&selected)["files"].as_array().unwrap().len(), 1);
+    assert_eq!(json(&selected)["files"][0]["filename"], "guide.md");
+    let stdin = parse(root, &["--stdin-filename", "buffer.md"], Some("# Buffer\n"));
+    assert_eq!(stdin.status.code(), Some(0));
+    assert!(stdin.stderr.is_empty());
+    assert_eq!(json(&stdin)["files"].as_array().unwrap().len(), 1);
+    assert_eq!(json(&stdin)["files"][0]["document"]["source"], "# Buffer\n");
+    assert!(!root.join("buffer.md").exists());
+}
+
+#[test]
 fn missing_requested_file_is_an_error_and_existing_file_still_parses() {
     let workspace = configured_workspace();
     write(workspace.path(), "a.md", "# Available\n");

@@ -17,18 +17,6 @@ use serde::Serialize;
 pub use links::{LocalWorkspaceFiles, PathStatus, WorkspaceFiles};
 pub use suppression::SuppressionRecord;
 
-pub const SINGLE_FILE_RULES: [&str; 11] = [
-    "KND001", "KND002", "STL001", "STL003", "PTR001", "PTR003", "LNK001", "RAT002", "VOX001",
-    "SUP001", "SUP002",
-];
-pub const CROSS_FILE_RULES: [&str; 7] = [
-    "PTR002", "LNK002", "DUP001", "DUP002", "DUP003", "OWN001", "OWN002",
-];
-pub const IMPLEMENTED_RULES: [&str; 18] = [
-    "KND001", "KND002", "STL001", "STL003", "PTR001", "PTR002", "PTR003", "LNK001", "LNK002",
-    "DUP001", "DUP002", "DUP003", "OWN001", "OWN002", "RAT002", "VOX001", "SUP001", "SUP002",
-];
-
 #[derive(Clone, Debug, Serialize)]
 pub struct KindResolution {
     pub value: Option<String>,
@@ -137,13 +125,14 @@ pub fn check_raw_with_files(
         .config
         .enabled_rules(context.path, kind.value.as_deref(), context.overrides)?
         .into_iter()
-        .filter(|code| SINGLE_FILE_RULES.contains(code))
+        .filter(|code| rule(code).is_some_and(|rule| !rule.requires_index))
         .map(str::to_owned)
         .collect();
     let mut diagnostics = kind_diagnostics(context, &enabled);
-    if enabled.iter().any(|code| {
-        ["STL001", "STL003", "PTR001", "PTR003", "RAT002", "VOX001"].contains(&code.as_str())
-    }) {
+    if enabled
+        .iter()
+        .any(|code| rule(code).is_some_and(|rule| rule.phase == RulePhase::Normative))
+    {
         diagnostics.extend(normative::check(
             context.document,
             context.filename,
@@ -257,97 +246,195 @@ pub struct Rule {
     pub requires_filesystem: bool,
     pub requires_index: bool,
     pub documentation: &'static str,
+    #[serde(skip)]
+    phase: RulePhase,
+    #[serde(skip)]
+    stable: bool,
+    #[serde(skip)]
+    kinds: KindScope,
 }
 
 impl Rule {
     pub fn status(&self) -> &'static str {
-        if crate::config::STABLE_RULE_CODES.contains(&self.code) {
-            "stable"
-        } else {
-            "preview"
+        if self.stable { "stable" } else { "preview" }
+    }
+
+    pub fn is_stable(&self) -> bool {
+        self.stable
+    }
+
+    pub fn applies_to_kind(&self, kind: Option<&str>) -> bool {
+        if kind == Some("generated") {
+            return false;
+        }
+        let Some(kind) = kind.filter(|kind| crate::config::KINDS.contains(kind)) else {
+            return self.kinds == KindScope::Any;
+        };
+        match self.kinds {
+            KindScope::Any | KindScope::Declared => true,
+            KindScope::LongLived => ["readme", "howto", "reference", "runbook"].contains(&kind),
+            KindScope::ExceptChangelog => kind != "changelog",
+            KindScope::HowtoOrReference => ["howto", "reference"].contains(&kind),
         }
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum RulePhase {
+    Kind,
+    Normative,
+    Links,
+    Suppression,
+    CrossFile,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum KindScope {
+    Any,
+    Declared,
+    LongLived,
+    ExceptChangelog,
+    HowtoOrReference,
+}
+
 macro_rules! rule {
-    ($code:literal, $name:literal, $basis:literal, $reads:expr, $fs:expr) => {
-        rule!($code, $name, $basis, $reads, $fs, false)
-    };
-    ($code:literal, $name:literal, $basis:literal, $reads:expr, $fs:expr, $index:expr) => {
+    ($code:literal, $name:literal, $basis:literal, $reads:expr, $fs:expr, $phase:ident, $stable:expr, $kinds:ident) => {
         Rule {
             code: $code,
             name: $name,
             basis: $basis,
             reads: $reads,
             requires_filesystem: $fs,
-            requires_index: $index,
+            requires_index: matches!(RulePhase::$phase, RulePhase::CrossFile),
             documentation: include_str!(concat!("../../docs/rules/", $code, ".md")),
+            phase: RulePhase::$phase,
+            stable: $stable,
+            kinds: KindScope::$kinds,
         }
     };
 }
 
 use FragmentKind::{InlineCode, LinkDestination, LinkText, Text};
-static RULES: [Rule; 18] = [
-    rule!("KND001", "missing-document-kind", "consistency", &[], false),
-    rule!("KND002", "invalid-document-kind", "consistency", &[], false),
+static RULES: &[Rule] = &[
+    rule!(
+        "KND001",
+        "missing-document-kind",
+        "consistency",
+        &[],
+        false,
+        Kind,
+        true,
+        Any
+    ),
+    rule!(
+        "KND002",
+        "invalid-document-kind",
+        "consistency",
+        &[],
+        false,
+        Kind,
+        true,
+        Any
+    ),
     rule!(
         "STL001",
         "current-value-snapshot",
         "convention",
         &[Text, LinkText, InlineCode],
-        false
+        false,
+        Normative,
+        false,
+        LongLived
     ),
     rule!(
         "STL003",
         "commit-snapshot",
         "convention",
         &[Text, LinkText, InlineCode],
-        false
+        false,
+        Normative,
+        false,
+        LongLived
     ),
     rule!(
         "PTR001",
         "repository-root-pointer",
         "convention",
         &[Text, LinkText, LinkDestination],
-        false
+        false,
+        Normative,
+        false,
+        ExceptChangelog
     ),
     rule!(
         "PTR003",
         "unspecified-source-pointer",
         "convention",
         &[Text, LinkText, InlineCode, LinkDestination],
-        false
+        false,
+        Normative,
+        false,
+        Declared
     ),
     rule!(
         "LNK001",
         "missing-local-link-target",
         "consistency",
         &[LinkDestination],
-        true
+        true,
+        Links,
+        true,
+        Any
     ),
     rule!(
         "RAT002",
         "design-choice-heading",
         "convention",
         &[Text, LinkText],
-        false
+        false,
+        Normative,
+        false,
+        HowtoOrReference
     ),
     rule!(
         "VOX001",
         "requester-conversation",
         "convention",
         &[Text, LinkText],
-        false
+        false,
+        Normative,
+        false,
+        LongLived
     ),
-    rule!("SUP001", "invalid-suppression", "consistency", &[], false),
-    rule!("SUP002", "unused-suppression", "consistency", &[], false),
+    rule!(
+        "SUP001",
+        "invalid-suppression",
+        "consistency",
+        &[],
+        false,
+        Suppression,
+        true,
+        Any
+    ),
+    rule!(
+        "SUP002",
+        "unused-suppression",
+        "consistency",
+        &[],
+        false,
+        Suppression,
+        true,
+        Any
+    ),
     rule!(
         "PTR002",
         "directory-pointer",
         "heuristic",
         &[LinkDestination],
         true,
-        true
+        CrossFile,
+        false,
+        ExceptChangelog
     ),
     rule!(
         "LNK002",
@@ -355,7 +442,9 @@ static RULES: [Rule; 18] = [
         "consistency",
         &[LinkDestination],
         true,
-        true
+        CrossFile,
+        false,
+        Any
     ),
     rule!(
         "DUP001",
@@ -363,7 +452,9 @@ static RULES: [Rule; 18] = [
         "heuristic",
         &[InlineCode],
         false,
-        true
+        CrossFile,
+        false,
+        Declared
     ),
     rule!(
         "DUP002",
@@ -371,7 +462,9 @@ static RULES: [Rule; 18] = [
         "heuristic",
         &[InlineCode, LinkDestination],
         false,
-        true
+        CrossFile,
+        false,
+        Declared
     ),
     rule!(
         "DUP003",
@@ -379,7 +472,9 @@ static RULES: [Rule; 18] = [
         "heuristic",
         &[Text, LinkText, InlineCode],
         false,
-        true
+        CrossFile,
+        false,
+        Declared
     ),
     rule!(
         "OWN001",
@@ -387,7 +482,9 @@ static RULES: [Rule; 18] = [
         "heuristic",
         &[InlineCode],
         false,
-        true
+        CrossFile,
+        false,
+        Declared
     ),
     rule!(
         "OWN002",
@@ -395,14 +492,28 @@ static RULES: [Rule; 18] = [
         "heuristic",
         &[InlineCode, Text, LinkText],
         false,
-        true
+        CrossFile,
+        false,
+        Declared
     ),
 ];
 
 pub fn rules() -> &'static [Rule] {
-    &RULES
+    RULES
 }
 
 pub fn rule(code: &str) -> Option<&'static Rule> {
     RULES.iter().find(|rule| rule.code == code)
+}
+
+pub fn rule_codes() -> impl Iterator<Item = &'static str> {
+    RULES.iter().map(|rule| rule.code)
+}
+
+pub fn single_file_rules() -> impl Iterator<Item = &'static Rule> {
+    RULES.iter().filter(|rule| !rule.requires_index)
+}
+
+pub fn cross_file_rules() -> impl Iterator<Item = &'static Rule> {
+    RULES.iter().filter(|rule| rule.requires_index)
 }

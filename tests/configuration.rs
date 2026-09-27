@@ -1,7 +1,8 @@
 use std::fs;
 use std::path::Path;
 
-use seiso::config::{CliOverrides, Config, ConfigError, RULE_CODES, Workspace};
+use seiso::config::{CliOverrides, Config, ConfigError, Workspace};
+use seiso::rules::rule_codes;
 use tempfile::{TempDir, tempdir};
 
 fn write(root: &Path, path: &str, source: &str) {
@@ -351,7 +352,7 @@ fn exact_selection_beats_family_ignore_and_ties_favor_ignore() {
     );
     assert_eq!(
         rules(&config, Some("howto"), &CliOverrides::default()),
-        ["KND001", "STL002", "STL003", "STL004"]
+        ["KND001", "STL003"]
     );
 }
 
@@ -383,7 +384,6 @@ fn cli_select_replaces_and_extend_select_appends() {
 #[test]
 fn accepted_consistency_rules_are_default_and_other_rules_require_preview() {
     let (_dir, config) = parse("");
-    assert_eq!(RULE_CODES.len(), 27);
     assert_eq!(
         rules(&config, Some("howto"), &CliOverrides::default()),
         ["KND001", "KND002", "LNK001", "SUP001", "SUP002"]
@@ -396,8 +396,8 @@ fn accepted_consistency_rules_are_default_and_other_rules_require_preview() {
             ..Default::default()
         },
     );
-    assert_eq!(preview.len(), 27);
-    for code in RULE_CODES {
+    assert_eq!(preview.len(), rule_codes().count());
+    for code in rule_codes() {
         assert!(preview.contains(&code));
     }
 }
@@ -437,7 +437,54 @@ fn kind_controls_rule_applicability() {
     assert!(changelog.contains(&"PTR003"));
     let reference = rules(&config, Some("reference"), &CliOverrides::default());
     assert!(reference.contains(&"RAT002"));
-    assert!(!reference.contains(&"ORD001"));
+    let readme = rules(&config, Some("readme"), &CliOverrides::default());
+    assert!(!readme.contains(&"RAT002"));
+}
+
+#[test]
+fn dependency_selection_precedes_document_kind_applicability() {
+    let (_dir, config) = parse(
+        "preview = true\n[lint]\nselect = ['STL', 'DUP', 'KND']\nignore = ['DUP']\n[lint.per-file-ignores]\n'docs/**' = ['KND']",
+    );
+    assert_eq!(
+        config
+            .selected_rules(Path::new("docs/page.md"), &CliOverrides::default())
+            .unwrap(),
+        ["STL001", "STL003"]
+    );
+    assert!(rules(&config, None, &CliOverrides::default()).is_empty());
+    assert!(rules(&config, Some("generated"), &CliOverrides::default()).is_empty());
+}
+
+#[test]
+fn unimplemented_rules_are_rejected_in_every_selection_surface() {
+    let dir = tempdir().unwrap();
+    let config = Config::defaults(dir.path()).unwrap();
+    for code in [
+        "STL002", "STL004", "RAT001", "ORD001", "ORD002", "MIX001", "VOX002", "VOX003", "EVD001",
+    ] {
+        for preview in [false, true] {
+            let overrides = CliOverrides {
+                select: Some(vec![code.into()]),
+                preview,
+                ..Default::default()
+            };
+            assert!(matches!(
+                config.enabled_rules(Path::new("page.md"), Some("howto"), &overrides),
+                Err(ConfigError::Selector(_))
+            ));
+            for selection in [
+                format!("[lint]\nselect = ['{code}']"),
+                format!("[lint]\nignore = ['{code}']"),
+                format!("[lint.per-file-ignores]\n'**' = ['{code}']"),
+            ] {
+                assert!(
+                    Config::parse(&format!("preview = {preview}\n{selection}"), dir.path())
+                        .is_err()
+                );
+            }
+        }
+    }
 }
 
 #[test]

@@ -105,6 +105,9 @@ pub struct Diagnostic {
     pub url: Option<String>,
     pub related: Vec<RelatedLocation>,
     pub suggestion: String,
+    /// Internal identity used to build suppression fixes before rendering.
+    #[serde(skip)]
+    pub(crate) unused_suppression_code: Option<String>,
 }
 
 impl Diagnostic {
@@ -130,6 +133,7 @@ impl Diagnostic {
             url: None,
             related: Vec::new(),
             suggestion: suggestion.into(),
+            unused_suppression_code: None,
         }
     }
 }

@@ -2,7 +2,6 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::config::RULE_CODES;
 use crate::diagnostics::{Diagnostic, Span};
 use crate::md::{BlockKind, Document, HtmlComment};
 use serde::{Deserialize, Serialize};
@@ -19,6 +18,7 @@ pub enum SuppressionScope {
 pub enum SuppressionState {
     Active { count: usize },
     Stale,
+    NotEvaluated,
     RuleDisabled,
     Incomplete { count: usize },
     Invalid,
@@ -40,6 +40,35 @@ pub struct SuppressionResult {
     pub suppressions: Vec<SuppressionRecord>,
 }
 
+/// Inspect declarations without running lint rules or inferring their activity.
+pub fn inspect(document: &Document, enabled: &BTreeSet<String>) -> Vec<SuppressionRecord> {
+    let mut records = declarations(document, enabled, &BTreeSet::new());
+    for state in records
+        .iter_mut()
+        .flat_map(|record| record.states.values_mut())
+    {
+        if *state == SuppressionState::Stale {
+            *state = SuppressionState::NotEvaluated;
+        }
+    }
+    records
+}
+
+fn declarations(
+    document: &Document,
+    enabled: &BTreeSet<String>,
+    incomplete: &BTreeSet<String>,
+) -> Vec<SuppressionRecord> {
+    let mut records: Vec<_> = document
+        .comments
+        .iter()
+        .filter(|comment| comment.content.trim_start().starts_with("seiso:"))
+        .map(|comment| declaration(document, comment, enabled, incomplete))
+        .collect();
+    records.sort_by_key(|record| record.span);
+    records
+}
+
 /// Apply valid declarations to primary locations, then report unused exemptions.
 /// `enabled` contains rules that ran for this file, after all policy filters.
 pub fn apply(
@@ -49,13 +78,7 @@ pub fn apply(
     enabled: &BTreeSet<String>,
     incomplete: &BTreeSet<String>,
 ) -> SuppressionResult {
-    let mut suppressions: Vec<_> = document
-        .comments
-        .iter()
-        .filter(|comment| comment.content.trim_start().starts_with("seiso:"))
-        .map(|comment| declaration(document, comment, enabled, incomplete))
-        .collect();
-    suppressions.sort_by_key(|record| record.span);
+    let mut suppressions = declarations(document, enabled, incomplete);
 
     let mut pending = diagnostics;
     if enabled.contains("SUP001") {
@@ -185,7 +208,7 @@ fn parse_declaration(
     }
     let mut seen = BTreeSet::new();
     for code in &record.codes {
-        if !RULE_CODES.contains(&code.as_str()) {
+        if super::rule(code).is_none() {
             return Err(format!("`{code}` is not a known full rule code"));
         }
         if !seen.insert(code) {
@@ -341,7 +364,7 @@ fn stale_diagnostic(
     record: &SuppressionRecord,
     code: &str,
 ) -> Diagnostic {
-    Diagnostic::new(
+    let mut diagnostic = Diagnostic::new(
         filename,
         &document.source,
         "SUP002",
@@ -350,5 +373,7 @@ fn stale_diagnostic(
         format!(
             "Remove {code} from the declaration, or remove the comment if it lists no other rules."
         ),
-    )
+    );
+    diagnostic.unused_suppression_code = Some(code.to_owned());
+    diagnostic
 }

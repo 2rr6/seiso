@@ -1,10 +1,11 @@
 use std::collections::BTreeSet;
-use std::path::{Component, Path, PathBuf};
+use std::path::Path;
 use std::sync::LazyLock;
 
 use crate::config::{Config, Lexicon};
 use crate::diagnostics::{Diagnostic, Span};
 use crate::md::{BlockKind, Document, Fragment, FragmentKind, Language, Sentence};
+use crate::paths::{local_link_target, normalize};
 use regex::Regex;
 
 static URL: LazyLock<Regex> =
@@ -435,36 +436,6 @@ fn specific_target(fragment: &Fragment) -> bool {
                         .all(|ch| ch.is_ascii_alphanumeric() || ch == '_'))))
 }
 
-fn percent_decode(value: &str) -> Option<String> {
-    let mut bytes = Vec::with_capacity(value.len());
-    let mut cursor = 0;
-    while cursor < value.len() {
-        if value.as_bytes()[cursor] == b'%' {
-            let digits = value.get(cursor + 1..cursor + 3)?;
-            bytes.push(u8::from_str_radix(digits, 16).ok()?);
-            cursor += 3;
-        } else {
-            bytes.push(value.as_bytes()[cursor]);
-            cursor += 1;
-        }
-    }
-    String::from_utf8(bytes).ok()
-}
-
-fn normalize(path: &Path) -> PathBuf {
-    let mut result = PathBuf::new();
-    for component in path.components() {
-        match component {
-            Component::CurDir => {}
-            Component::ParentDir => {
-                result.pop();
-            }
-            value => result.push(value.as_os_str()),
-        }
-    }
-    result
-}
-
 fn repository_root(destination: &str, path: &Path, root: &Path) -> bool {
     if destination.contains(['#', '?', '{', '}', '$']) {
         return false;
@@ -535,19 +506,5 @@ fn repository_root(destination: &str, path: &Path, root: &Path) -> bool {
     if destination.starts_with("//") || destination.contains(':') || destination.is_empty() {
         return false;
     }
-    let Some(decoded) = percent_decode(destination) else {
-        return false;
-    };
-    let decoded = decoded.replace('\\', "/");
-    let resolved = if decoded.starts_with('/') {
-        root.join(decoded.trim_start_matches('/'))
-    } else {
-        let absolute = if path.is_absolute() {
-            path.to_path_buf()
-        } else {
-            root.join(path)
-        };
-        absolute.parent().unwrap_or(root).join(decoded)
-    };
-    normalize(&resolved) == normalize(root)
+    local_link_target(root, path, destination).is_ok_and(|link| link.path == normalize(root))
 }
