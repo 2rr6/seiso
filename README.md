@@ -82,6 +82,7 @@ rules.
 - [Architecture](https://github.com/scarletkc/seiso/blob/main/docs/reference/architecture.md): command execution
 - [Roadmap](https://github.com/scarletkc/seiso/blob/main/docs/design/roadmap.md): proposed features and milestone evidence
 - [Documentation index](https://github.com/scarletkc/seiso/blob/main/docs/README.md): guides, references, and evaluation records
+- [Contributing](https://github.com/scarletkc/seiso/blob/main/CONTRIBUTING.md): issues, branches, commits, and pull requests
 
 ## License
 

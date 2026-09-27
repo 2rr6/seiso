@@ -6,5 +6,9 @@ path = "README.md"
 kind = "readme"
 
 [[kinds]]
+path = "CONTRIBUTING.md"
+kind = "howto"
+
+[[kinds]]
 path = "docs/**"
 kind = "reference"

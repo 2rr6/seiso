@@ -176,13 +176,13 @@ in one cannot roll back another. GitHub Release creation waits for all selected
 registries to succeed.
 
 Prereleases use the same workflow and controls. For example, after committing
-and pushing the prerelease bump on `release-preview`, validate and then publish
-that unchanged ref:
+and pushing the prerelease bump on `release/v1.2.3-alpha.1`, validate and then
+publish that unchanged ref:
 
 ```sh
-gh workflow run publish.yml --ref release-preview
+gh workflow run publish.yml --ref release/v1.2.3-alpha.1
 # After the validation run succeeds:
-gh workflow run publish.yml --ref release-preview -f publish_all=true
+gh workflow run publish.yml --ref release/v1.2.3-alpha.1 -f publish_all=true
 ```
 
 Re-run the same release commit to finish a partial release, or select only the
