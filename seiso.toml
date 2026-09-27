@@ -1,0 +1,14 @@
+include = ["**/*.md"]
+exclude = ["crates/**/tests/fixtures/**"]
+
+[[kinds]]
+path = "README.md"
+kind = "readme"
+
+[[kinds]]
+path = "docs/**"
+kind = "reference"
+
+[[kinds]]
+path = "docs/seiso 设计与实施方案.md"
+kind = "plan"
