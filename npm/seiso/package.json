@@ -1,7 +1,7 @@
 {
   "name": "@scarletkc/seiso",
   "version": "0.0.0",
-  "description": "Inspect Markdown structure and documentation policy",
+  "description": "A Markdown convention and linter for project docs written by AI and read by humans and agents",
   "license": "MIT",
   "repository": {
     "type": "git",

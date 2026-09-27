@@ -12,7 +12,7 @@ use serde::Serialize;
 #[command(
     name = "seiso",
     version,
-    about = "Inspect Markdown structure and documentation policy"
+    about = "A Markdown convention and linter for project docs written by AI and read by humans and agents"
 )]
 struct Cli {
     #[command(subcommand)]
