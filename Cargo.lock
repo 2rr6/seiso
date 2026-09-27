@@ -395,7 +395,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "seiso_cli"
+name = "seiso"
 version = "0.0.0"
 dependencies = [
  "clap",

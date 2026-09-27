@@ -1,3 +1,9 @@
 /target/
 **/*.snap.new
 /.seiso_cache/
+/dist/
+/npm/seiso/native/
+/npm/seiso/README.md
+/npm/seiso/LICENSE
+*.tgz
+__pycache__/

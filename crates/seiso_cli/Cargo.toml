@@ -1,11 +1,15 @@
 [package]
-name = "seiso_cli"
+name = "seiso"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 publish.workspace = true
 description = "Command-line interface for seiso"
+readme = "../../README.md"
+include = ["src/**", "Cargo.toml", "README.md", "LICENSE"]
+categories = ["command-line-utilities", "development-tools"]
+keywords = ["markdown", "documentation", "linter"]
 
 [[bin]]
 name = "seiso"

@@ -6,6 +6,7 @@ license.workspace = true
 repository.workspace = true
 publish.workspace = true
 description = "Source-preserving Markdown document model for seiso"
+include = ["src/**", "Cargo.toml", "LICENSE"]
 
 [dependencies]
 markdown.workspace = true

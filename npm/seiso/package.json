@@ -1,0 +1,26 @@
+{
+  "name": "seiso",
+  "version": "0.0.0",
+  "description": "Inspect Markdown structure and documentation policy",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/scarletkc/seiso.git",
+    "directory": "npm/seiso"
+  },
+  "homepage": "https://github.com/scarletkc/seiso#readme",
+  "bugs": "https://github.com/scarletkc/seiso/issues",
+  "bin": {
+    "seiso": "bin/seiso.cjs"
+  },
+  "files": ["bin/", "native/", "LICENSE", "README.md"],
+  "os": ["linux", "win32"],
+  "cpu": ["x64"],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "prepack": "node scripts/verify.cjs"
+  },
+  "keywords": ["markdown", "documentation", "linter"]
+}

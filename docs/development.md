@@ -4,7 +4,8 @@ The Cargo workspace implements the local M0 foundation described in the
 [implementation plan](seiso%20设计与实施方案.md#实施路线图). `seiso_md` owns
 content-derived document data, `seiso_config` owns configuration and path
 policy, `seiso_diagnostics` owns source locations and diagnostic rendering,
-and `seiso_cli` joins them in the `seiso parse` inspection command.
+and the `seiso` package in `crates/seiso_cli` joins them in the `seiso parse`
+inspection command.
 
 ## Build and validate
 
@@ -33,8 +34,8 @@ separately and return exit code 2. This command inspects structure; it does
 not apply lint rules or return lint exit code 1.
 
 ```sh
-cargo run -p seiso_cli -- parse docs/ --output-format json
-cargo run -p seiso_cli -- parse --config seiso.toml README.md
+cargo run -p seiso -- parse docs/ --output-format json
+cargo run -p seiso -- parse --config seiso.toml README.md
 ```
 
 `--stdin-filename PATH` reads stdin instead of the file at PATH. PATH must
@@ -62,11 +63,12 @@ in [document tests](../crates/seiso_md/tests/document.rs) records this boundary.
 ## Milestone acceptance
 
 M0 also requires parsing the pinned evaluation corpus without panics and
-reserving package names on crates.io, PyPI, and npm. The corpus and package
-releases are not included in this workspace. Local tests do not establish
-corpus acceptance, rule precision, or the performance targets in the plan.
+publishing to crates.io, PyPI, and npm. The evaluation corpus is maintained
+separately. Local tests do not establish corpus acceptance, rule precision,
+or the performance targets in the plan. See [publishing](publishing.md) for
+the packaging and release procedure.
 
 The rule engine, suppression evaluation, repository index, parse cache,
-integrations, and distribution packages follow the plan's later milestones.
+and integrations follow the plan's later milestones.
 All rule metadata remains preview until the required evaluation establishes
 eligibility for stable status.

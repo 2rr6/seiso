@@ -1,0 +1,27 @@
+[build-system]
+requires = ["maturin>=1.15,<2"]
+build-backend = "maturin"
+
+[project]
+name = "seiso"
+dynamic = ["version"]
+description = "Inspect Markdown structure and documentation policy"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: Console",
+    "Programming Language :: Rust",
+    "Topic :: Documentation",
+    "Topic :: Software Development :: Quality Assurance",
+]
+
+[project.urls]
+Repository = "https://github.com/scarletkc/seiso"
+Issues = "https://github.com/scarletkc/seiso/issues"
+
+[tool.maturin]
+bindings = "bin"
+manifest-path = "crates/seiso_cli/Cargo.toml"
+strip = true
