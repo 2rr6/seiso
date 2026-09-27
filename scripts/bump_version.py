@@ -11,21 +11,20 @@ import re
 import tomllib
 
 from release import ROOT, release_metadata
+from versions import parse_version, version_key
 
 
 def next_version(current, requested):
-    major, minor, patch = map(int, current.split("."))
+    (major, minor, patch), stage, _ = parse_version(current)
     if requested == "major":
         result = f"{major + 1}.0.0"
     elif requested == "minor":
         result = f"{major}.{minor + 1}.0"
     elif requested == "patch":
-        result = f"{major}.{minor}.{patch + 1}"
+        result = f"{major}.{minor}.{patch if stage else patch + 1}"
     else:
         result = requested.removeprefix("v")
-    if not re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", result):
-        raise ValueError("Expected patch, minor, major, or a MAJOR.MINOR.PATCH version")
-    if tuple(map(int, result.split("."))) <= (major, minor, patch):
+    if version_key(result) <= version_key(current):
         raise ValueError(f"New version must be greater than {current}")
     return result
 

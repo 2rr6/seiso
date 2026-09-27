@@ -50,6 +50,14 @@ class GitHubReleaseTests(unittest.TestCase):
         self.assertIn("Fix links", body)
         self.assertNotIn("Full diff", body)
 
+    def test_notes_use_nearest_prerelease_tag(self):
+        self.git("tag", "v1.1.0-rc.1")
+        self.commit("Finish release")
+        body = github_release.compose_notes("1.1.0", "scarletkc/seiso", self.root)
+        self.assertIn("Changes since v1.1.0-rc.1", body)
+        self.assertIn("Finish release", body)
+        self.assertNotIn("Fix links (", body)
+
     def test_rerun_excludes_current_tag_from_previous_selection(self):
         self.git("tag", "v1.1.0")
         body = github_release.compose_notes("1.1.0", "scarletkc/seiso", self.root)
@@ -83,6 +91,13 @@ class GitHubReleaseTests(unittest.TestCase):
         self.assertEqual(args[args.index("--target") + 1], self.git("rev-parse", "HEAD"))
         self.assertEqual(args[args.index("--notes-file") + 1], str(self.notes))
         self.assertEqual(run.call_args_list[1].args[0][:3], ["gh", "release", "upload"])
+
+    @patch("github_release.run")
+    @patch("github_release.get_release", return_value=None)
+    def test_prerelease_is_marked_on_github(self, lookup, run):
+        github_release.publish_github("1.1.0-rc.1", "owner/repo", self.notes, self.assets,
+                                      execute=True, root=self.root)
+        self.assertIn("--prerelease", run.call_args_list[0].args[0])
 
     @patch("github_release.run")
     @patch("github_release.get_release", return_value={"draft": False, "assets": [{"name": "seiso.tgz"}]})

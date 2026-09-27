@@ -9,6 +9,7 @@ import zipfile
 
 from prepare_npm import prepare
 from verify_distributions import verify
+from versions import python_version
 
 
 class PackagingTests(unittest.TestCase):
@@ -43,6 +44,21 @@ class PackagingTests(unittest.TestCase):
             self.assertEqual(checksum, hashlib.sha256((self.output / "native" / name).read_bytes()).hexdigest())
         self.assertEqual((self.output / "README.md").read_text(), "Readme")
 
+    def test_prerelease_wheel_metadata_is_normalized_for_npm(self):
+        for stage, suffix in [("alpha", "a"), ("beta", "b"), ("rc", "rc")]:
+            with self.subTest(stage=stage):
+                cargo_version = f"1.2.3-{stage}.1"
+                (self.root / "Cargo.toml").write_text(f'[package]\nversion = "{cargo_version}"\n')
+                (self.output / "package.json").write_text(json.dumps({"name": "@scarletkc/seiso", "version": cargo_version}))
+                self.assertEqual(python_version(cargo_version), f"1.2.3{suffix}1")
+                for path in self.wheels.glob("*.whl"):
+                    path.unlink()
+                self.wheel("win_amd64", f"1.2.3{suffix}1")
+                self.wheel("manylinux_2_17_x86_64", f"1.2.3{suffix}1")
+                prepare(self.wheels, self.output, self.root)
+                manifest = json.loads((self.output / "native/manifest.json").read_text())
+                self.assertEqual(manifest["version"], cargo_version)
+
     def test_missing_platform_does_not_write_a_partial_package(self):
         self.wheel("win_amd64")
         with self.assertRaisesRegex(ValueError, "Both Linux"):
@@ -58,13 +74,13 @@ class PackagingTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "More than one wheel"):
             prepare(self.wheels, self.output, self.root)
 
-    def sdist(self, include_license):
-        with tarfile.open(self.wheels / "seiso-0.0.0.tar.gz", "w:gz") as archive:
-            files = {"PKG-INFO": b"Name: seiso\nVersion: 0.0.0\nLicense-File: LICENSE\n"}
+    def sdist(self, include_license, version="0.0.0"):
+        with tarfile.open(self.wheels / f"seiso-{version}.tar.gz", "w:gz") as archive:
+            files = {"PKG-INFO": f"Name: seiso\nVersion: {version}\nLicense-File: LICENSE\n".encode()}
             if include_license:
                 files["LICENSE"] = b"License\r\n"
             for name, data in files.items():
-                member = tarfile.TarInfo(f"seiso-0.0.0/{name}")
+                member = tarfile.TarInfo(f"seiso-{version}/{name}")
                 member.size = len(data)
                 archive.addfile(member, io.BytesIO(data))
 
@@ -75,6 +91,11 @@ class PackagingTests(unittest.TestCase):
 
     def test_source_archive_accepts_license_with_windows_newlines(self):
         self.sdist(include_license=True)
+        verify(self.wheels, self.root)
+
+    def test_source_archive_uses_python_prerelease_version(self):
+        (self.root / "Cargo.toml").write_text('[package]\nversion = "1.2.3-rc.1"\n')
+        self.sdist(include_license=True, version="1.2.3rc1")
         verify(self.wheels, self.root)
 
 

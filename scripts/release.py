@@ -4,7 +4,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import subprocess
 import tarfile
@@ -12,6 +11,8 @@ import tomllib
 from urllib.error import HTTPError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
+
+from versions import parse_version
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -23,14 +24,12 @@ def run(args, root=ROOT):
     subprocess.run([shutil.which(args[0]) or args[0], *map(str, args[1:])], cwd=root, check=True)
 
 
-def validate(root, metadata):
+def validate(root, metadata, crates=False):
     manifest = tomllib.loads((root / "Cargo.toml").read_text(encoding="utf-8"))
     version = manifest["package"]["version"]
     if manifest["package"]["name"] != "seiso":
         raise ValueError("The root Cargo package must be named seiso")
-    # The wheel checks compare Cargo and Python versions literally.
-    if not re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", version):
-        raise ValueError("Release versions must use MAJOR.MINOR.PATCH (no prerelease or build suffix)")
+    parse_version(version)
     npm = json.loads((root / "npm/seiso/package.json").read_text(encoding="utf-8"))
     if npm["name"] != "@scarletkc/seiso" or npm["version"] != version:
         raise ValueError("npm name/version must be @scarletkc/seiso and the Cargo package version")
@@ -40,29 +39,28 @@ def validate(root, metadata):
             or "version" in python["project"]
             or python["tool"]["maturin"]["manifest-path"] != "Cargo.toml"):
         raise ValueError("PyPI must derive seiso's version from the root Cargo.toml")
-    members = {p["name"]: p for p in metadata["packages"] if p["id"] in metadata["workspace_members"]}
-    if set(members) != {"seiso"} or Path(members["seiso"]["manifest_path"]).resolve() != (root / "Cargo.toml").resolve():
-        raise ValueError("Release must contain only the root seiso package")
+    packages = [p for p in metadata["packages"] if p["name"] == "seiso"
+                and p["id"] in metadata["workspace_members"]
+                and Path(p["manifest_path"]).resolve() == (root / "Cargo.toml").resolve()]
+    if len(packages) != 1:
+        raise ValueError("Cargo metadata must identify the root seiso package")
+    package = packages[0]
     lock = tomllib.loads((root / "Cargo.lock").read_text(encoding="utf-8"))
-    locked = {p["name"]: p["version"] for p in lock["package"] if "source" not in p}
-    for name, package in members.items():
-        if package["version"] != version or locked.get(name) != version:
-            raise ValueError(f"{name}: Cargo manifest/lock version differs from {version}")
-        if package["publish"] is not None and "crates-io" not in package["publish"]:
-            raise ValueError(f"{name}: publishing to crates.io must be enabled")
-        for dependency in package["dependencies"]:
-            if "path" not in dependency:
-                continue
-            raise ValueError(f"seiso must not depend on local crate {dependency['name']}; use an internal module")
+    locked = [p["version"] for p in lock["package"] if p["name"] == "seiso" and "source" not in p]
+    if package["version"] != version or locked != [version]:
+        raise ValueError(f"seiso: Cargo manifest/lock version differs from {version}")
+    if crates and package["publish"] is not None and "crates-io" not in package["publish"]:
+        raise ValueError("seiso: publishing to crates.io must be enabled")
+    # Cargo package validates publishable dependencies and compiles the archive.
     return version
 
 
-def release_metadata(root=ROOT):
+def release_metadata(root=ROOT, crates=False):
     result = subprocess.run(
         ["cargo", "metadata", "--no-deps", "--locked", "--format-version", "1"],
         cwd=root, check=True, capture_output=True, text=True,
     )
-    version = validate(root, json.loads(result.stdout))
+    version = validate(root, json.loads(result.stdout), crates=crates)
     print(f"Release seiso {version}", flush=True)
     return version
 
@@ -127,7 +125,7 @@ def publish_npm(version, directory, execute=False):
     # npm publish --dry-run rejects an existing version, blocking partial-release retries.
     # Packing the tested archive validates it without requiring registry availability.
     command = (["npm", "publish", str(archive), "--access", "public", "--ignore-scripts",
-                "--registry", NPM_REGISTRY] if execute else
+                "--registry", NPM_REGISTRY, "--tag", "next" if parse_version(version)[1] else "latest"] if execute else
                ["npm", "pack", str(archive), "--dry-run", "--ignore-scripts"])
     run(command)
 
@@ -138,7 +136,7 @@ def main():
     parser.add_argument("--execute", action="store_true", help="Upload missing versions to the registry")
     parser.add_argument("--dist", type=Path, default=ROOT / "dist")
     args = parser.parse_args()
-    version = release_metadata()
+    version = release_metadata(crates=args.command == "crates")
     if args.command == "check":
         if output := os.environ.get("GITHUB_OUTPUT"):
             with open(output, "a", encoding="utf-8") as stream:

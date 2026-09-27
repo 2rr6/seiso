@@ -19,7 +19,7 @@ python scripts/bump_version.py patch --note "Release title"
 ```
 
 The version argument accepts `patch` (also the default), `minor`, `major`,
-or an explicit version such as `1.2.3` or `v1.2.3`. Add `--dry-run` to preview
+or an explicit version such as `1.2.3`, `v1.2.3`, or `1.2.3-rc.1`. Add `--dry-run` to preview
 the affected files. The script rejects equal or lower versions, checks the
 existing versions for consistency, and plans all edits before writing.
 
@@ -27,8 +27,17 @@ The script updates `package.version` in the root `Cargo.toml`, the `seiso`
 entry in `Cargo.lock`, and `npm/seiso/package.json`. Third-party dependency
 versions remain unchanged. clap reads the package version for the CLI's
 `--version`, and maturin reads it for PyPI. No separate CLI or Python version
-literal needs editing. Release versions use `MAJOR.MINOR.PATCH`; prerelease
-and build suffixes are rejected by the literal distribution-version checks.
+literal needs editing. Release versions use `MAJOR.MINOR.PATCH`, optionally
+followed by `-alpha.N`, `-beta.N`, or `-rc.N`. Python distribution metadata uses
+the corresponding PEP 440 spelling (`1.2.3a1`, `1.2.3b1`, or `1.2.3rc1`);
+Cargo, npm, and the executable retain the Cargo spelling. Other suffixes,
+including build metadata, are outside this shared registry version format.
+From a prerelease, `patch` promotes its version to the final release; use an
+explicit version to advance the prerelease number.
+
+Prereleases publish under npm's `next` tag and are marked as prereleases on
+GitHub. Stable versions publish under npm's `latest` tag. Version parsing and
+Python normalization are shared in [`scripts/versions.py`](../scripts/versions.py).
 
 `--note` creates `docs/release-notes/VERSION.md` with a `## Release title`
 heading. Fill in its body with user-facing changes and migration instructions
@@ -62,6 +71,11 @@ python scripts/release.py crates
 The last command runs `cargo package --package seiso --locked --registry
 crates-io`, including compilation of the packaged sources without uploading. The package
 contains the CLI, library modules, embedded rule documentation, and MIT license.
+Release validation identifies the root `seiso` package; other workspace packages
+may have their own versions and publication settings. Cargo's package verification
+checks dependency publishability and compilation, including versioned local dependencies.
+The root package's crates.io publication setting is checked only on the crates
+path; it does not block Python, npm, or GitHub distribution.
 Already published versions are immutable; bump the version before releasing
 changed code.
 
@@ -72,7 +86,19 @@ The workflow checks version consistency and release notes, runs script and
 Rust tests, verifies the Cargo package, builds and exercises Linux x64 and
 Windows x64 wheels, creates a source archive, and packs and exercises the npm
 executable. Build jobs have no publishing secrets or OIDC permissions and do
-not enter publishing environments. Every upload waits for these checks.
+not enter publishing environments. This is the complete validation path. A
+selected registry upload waits for shared preflight and its required artifacts:
+
+| Selection | Builds and verifies |
+| --- | --- |
+| `publish_crates` | Cargo package |
+| `publish_pypi` | Wheels and source archive |
+| `publish_npm` | Wheels and source archive, then the npm package using those binaries |
+| `publish_github`, `publish_all`, or no upload selection | All distributions and release notes |
+
+Selections are additive. Script tests and Linux Rust tests run once in shared
+preflight; the Windows wheel job also runs Rust tests on Windows. Release notes
+and tag checks apply to the full validation and GitHub Release paths.
 
 Download the artifacts and generated release body:
 
@@ -107,10 +133,10 @@ crates.io authentication uses a temporary token from
 
 Run the workflow at the tested release ref and enable **`publish_all`** to
 publish npm, crates.io, PyPI, and a GitHub Release in one run. For selected
-registries, leave it off and enable `publish_npm`, `publish_crates`, or the
-existing `publish_pypi`. These selections are additive and also create the
-GitHub Release after the selected uploads succeed. `publish_github` creates
-only the GitHub Release after build verification.
+registries, leave it off and enable `publish_npm`, `publish_crates`, or
+`publish_pypi`. Select `publish_github` as well to create the GitHub Release
+after the selected uploads succeed. On its own, `publish_github` builds all
+distributions and creates the GitHub Release without registry uploads.
 
 The GitHub Release is named `seiso vVERSION`, tags the checked-out commit, and
 includes the generated body, wheels, source archive, npm archive, and the

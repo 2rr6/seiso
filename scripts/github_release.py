@@ -10,6 +10,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from release import ROOT, release_metadata, run
+from versions import VERSION, parse_version
 
 
 def git(*args, root=ROOT):
@@ -41,7 +42,7 @@ def compose_notes(version, repository, root=ROOT):
     tag, _ = validate_tag(version, root)
     note = handwritten_note(root / "docs/release-notes" / f"{version}.md")
     candidates = [name for name in git("tag", "--merged", "HEAD", root=root).splitlines()
-                  if name != tag and re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", name)]
+                  if name != tag and name.startswith("v") and VERSION.fullmatch(name[1:])]
     previous = ""
     if candidates:
         matches = [arg for candidate in candidates for arg in ("--match", candidate)]
@@ -85,8 +86,11 @@ def publish_github(version, repository, notes, directory, execute=False, root=RO
         return
     existing = get_release(repository, tag)
     if existing is None:
-        run(["gh", "release", "create", tag, "--repo", repository, "--target", sha,
-             "--title", f"seiso {tag}", "--notes-file", str(notes)], root)
+        command = ["gh", "release", "create", tag, "--repo", repository, "--target", sha,
+                   "--title", f"seiso {tag}", "--notes-file", str(notes)]
+        if parse_version(version)[1]:
+            command.append("--prerelease")
+        run(command, root)
         published = set()
     else:
         if existing["draft"]:

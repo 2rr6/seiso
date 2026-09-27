@@ -7,6 +7,8 @@ import tarfile
 import tomllib
 import zipfile
 
+from versions import python_version
+
 
 def verify(directory: Path, root: Path) -> None:
     version = tomllib.loads((root / "Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]
@@ -42,7 +44,7 @@ def verify(directory: Path, root: Path) -> None:
 
 
 def validate(metadata, prefix, read, version, expected_license):
-    if metadata["Name"] != "seiso" or metadata["Version"] != version:
+    if metadata["Name"] != "seiso" or metadata["Version"] != python_version(version):
         raise ValueError("Distribution name/version differs from the Cargo package")
     licenses = metadata.get_all("License-File", [])
     if not licenses:

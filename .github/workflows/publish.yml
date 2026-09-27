@@ -34,7 +34,7 @@ concurrency:
 jobs:
   preflight:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 30
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -46,17 +46,22 @@ jobs:
         with:
           python-version: '3.12'
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - run: python scripts/release.py check
         id: version
       - run: python -m unittest discover -s scripts -p 'test_*.py'
-      - run: python scripts/github_release.py notes
-      - uses: actions/upload-artifact@v4
+      - run: cargo test --locked
+      - if: inputs.publish_all || inputs.publish_github || !(inputs.publish_npm || inputs.publish_crates || inputs.publish_pypi)
+        run: python scripts/github_release.py notes
+      - if: inputs.publish_all || inputs.publish_github || !(inputs.publish_npm || inputs.publish_crates || inputs.publish_pypi)
+        uses: actions/upload-artifact@v4
         with:
           name: release-notes
           path: release-notes.md
           if-no-files-found: error
 
   crates:
+    if: inputs.publish_all || inputs.publish_github || inputs.publish_crates || !(inputs.publish_npm || inputs.publish_pypi)
     needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -77,6 +82,7 @@ jobs:
           if-no-files-found: error
 
   wheels:
+    if: inputs.publish_all || inputs.publish_github || inputs.publish_npm || inputs.publish_pypi || !inputs.publish_crates
     needs: preflight
     strategy:
       fail-fast: false
@@ -93,7 +99,8 @@ jobs:
           python-version: '3.12'
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --locked
+      - if: runner.os == 'Windows'
+        run: cargo test --locked
       - uses: PyO3/maturin-action@v1
         with:
           maturin-version: '1.15.0'
@@ -124,6 +131,7 @@ jobs:
           if-no-files-found: error
 
   npm:
+    if: inputs.publish_all || inputs.publish_github || inputs.publish_npm || !(inputs.publish_crates || inputs.publish_pypi)
     needs: wheels
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -142,7 +150,6 @@ jobs:
           pattern: distributions-*
           merge-multiple: true
           path: dist
-      - run: python -m unittest discover -s scripts -p 'test_*.py'
       - run: python scripts/prepare_npm.py --wheels dist
       - run: npm pack ./npm/seiso --pack-destination dist
       - uses: dtolnay/rust-toolchain@stable
@@ -163,7 +170,7 @@ jobs:
 
   publish-npm:
     if: inputs.publish_all || inputs.publish_npm
-    needs: [wheels, npm, crates]
+    needs: npm
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: npm
@@ -190,7 +197,7 @@ jobs:
 
   publish-crates:
     if: inputs.publish_all || inputs.publish_crates
-    needs: [wheels, npm, crates]
+    needs: crates
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: crates-io
@@ -215,7 +222,7 @@ jobs:
 
   pypi:
     if: inputs.publish_all || inputs.publish_pypi
-    needs: [wheels, npm, crates]
+    needs: wheels
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: pypi
@@ -234,7 +241,7 @@ jobs:
   github-release:
     if: >-
       always() && !cancelled() &&
-      (inputs.publish_all || inputs.publish_github || inputs.publish_npm || inputs.publish_crates || inputs.publish_pypi) &&
+      (inputs.publish_all || inputs.publish_github) &&
       needs.preflight.result == 'success' &&
       needs.wheels.result == 'success' && needs.npm.result == 'success' && needs.crates.result == 'success' &&
       (needs.publish-npm.result == 'success' || needs.publish-npm.result == 'skipped') &&

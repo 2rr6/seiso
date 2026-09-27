@@ -1,4 +1,3 @@
-import copy
 import io
 import json
 from pathlib import Path
@@ -38,11 +37,15 @@ class ReleaseTests(unittest.TestCase):
         version = release.validate(self.root, self.metadata)
         self.assertEqual(version, "1.2.3")
 
-    def test_extra_local_package_is_rejected(self):
+    def test_extra_workspace_packages_do_not_control_seiso_publication(self):
         self.metadata["workspace_members"].append("lib")
-        self.metadata["packages"].append({"id": "lib", "name": "internal"})
-        with self.assertRaisesRegex(ValueError, "only the root"):
-            release.validate(self.root, self.metadata)
+        self.metadata["packages"].append({"id": "lib", "name": "internal", "version": "9.0.0", "publish": []})
+        self.assertEqual(release.validate(self.root, self.metadata), "1.2.3")
+
+    def test_local_dependency_publishability_is_left_to_cargo_package(self):
+        self.metadata["packages"][0]["dependencies"] = [
+            {"name": "internal", "req": "^2.0.0", "path": "internal"}]
+        self.assertEqual(release.validate(self.root, self.metadata), "1.2.3")
 
     def test_npm_and_lock_drift_fail(self):
         for path in ["npm/seiso/package.json", "Cargo.lock"]:
@@ -54,16 +57,18 @@ class ReleaseTests(unittest.TestCase):
                     release.validate(self.root, self.metadata)
                 file.write_text(original)
 
-    def test_crate_version_publish_flag_and_dependency_drift_fail(self):
-        changes = [("version", "1.2.4"), ("publish", []), ("publish", ["private"]),
-                   ("dependencies", [{"name": "internal", "req": "^1.2.3", "path": "."}]),
-                   ("dependencies", [{"name": "external", "req": "=1.2.3", "path": "."}])]
-        for key, value in changes:
-            with self.subTest(key=key, value=value):
-                metadata = copy.deepcopy(self.metadata)
-                metadata["packages"][0][key] = value
-                with self.assertRaises(ValueError):
-                    release.validate(self.root, metadata)
+    def test_crate_version_drift_fails(self):
+        self.metadata["packages"][0]["version"] = "1.2.4"
+        with self.assertRaisesRegex(ValueError, "manifest/lock"):
+            release.validate(self.root, self.metadata)
+
+    def test_crates_publish_flag_only_applies_to_crates_release(self):
+        for publish in [[], ["private"]]:
+            with self.subTest(publish=publish):
+                self.metadata["packages"][0]["publish"] = publish
+                self.assertEqual(release.validate(self.root, self.metadata), "1.2.3")
+                with self.assertRaisesRegex(ValueError, "crates.io"):
+                    release.validate(self.root, self.metadata, crates=True)
 
     def test_python_static_version_fails(self):
         file = self.root / "pyproject.toml"
@@ -71,10 +76,12 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "PyPI"):
             release.validate(self.root, self.metadata)
 
-    def test_prerelease_fails_before_literal_python_comparison(self):
-        (self.root / "Cargo.toml").write_text('[package]\nname = "seiso"\nversion = "1.2.3-rc.1"\n')
-        with self.assertRaisesRegex(ValueError, "MAJOR.MINOR.PATCH"):
-            release.validate(self.root, self.metadata)
+    def test_prerelease_passes_consistency_validation(self):
+        for name in ["Cargo.toml", "Cargo.lock", "npm/seiso/package.json"]:
+            path = self.root / name
+            path.write_text(path.read_text().replace("1.2.3", "1.2.3-rc.1"))
+        self.metadata["packages"][0]["version"] = "1.2.3-rc.1"
+        self.assertEqual(release.validate(self.root, self.metadata), "1.2.3-rc.1")
 
     @patch("release.run")
     @patch("release.crate_exists")
@@ -136,9 +143,11 @@ class ReleaseTests(unittest.TestCase):
         for status in [401, 403, 429, 500, 503]:
             with self.subTest(status=status):
                 open_url.side_effect = HTTPError("https://example.com", status, "error", {}, None)
+                self.addCleanup(open_url.side_effect.close)
                 with self.assertRaises(HTTPError):
                     release.registry_text("https://example.com")
         open_url.side_effect = HTTPError("https://example.com", 404, "absent", {}, None)
+        self.addCleanup(open_url.side_effect.close)
         self.assertIsNone(release.registry_text("https://example.com"))
 
     def npm_archive(self, version="1.2.3"):
@@ -178,6 +187,15 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn(str(archive), args)
         self.assertNotIn("--dry-run", args)
         self.assertIn("public", args)
+        self.assertEqual(args[args.index("--tag") + 1], "latest")
+
+    @patch("release.run")
+    @patch("release.registry_text", return_value=None)
+    def test_prerelease_npm_does_not_replace_latest(self, read, run):
+        self.npm_archive("1.2.3-rc.1")
+        release.publish_npm("1.2.3-rc.1", self.root, execute=True)
+        args = run.call_args.args[0]
+        self.assertEqual(args[args.index("--tag") + 1], "next")
 
     @patch("release.run")
     def test_wrong_npm_archive_fails_before_upload(self, run):

@@ -9,6 +9,8 @@ import tomllib
 import zipfile
 from email.parser import BytesParser
 
+from versions import python_version
+
 
 def prepare(wheels: Path, output: Path, root: Path) -> None:
     version = tomllib.loads((root / "Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]
@@ -31,7 +33,7 @@ def prepare(wheels: Path, output: Path, root: Path) -> None:
             if len(metadata_paths) != 1 or len(scripts) != 1:
                 raise ValueError(f"{wheel.name} must contain exactly one metadata record and seiso executable")
             metadata = BytesParser().parsebytes(archive.read(metadata_paths[0]))
-            if metadata["Name"] != "seiso" or metadata["Version"] != version:
+            if metadata["Name"] != "seiso" or metadata["Version"] != python_version(version):
                 raise ValueError(f"{wheel.name} does not match seiso {version}")
             binaries[target] = archive.read(scripts[0])
             if not binaries[target]:
