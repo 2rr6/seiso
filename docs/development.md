@@ -62,11 +62,11 @@ in [document tests](../crates/seiso_md/tests/document.rs) records this boundary.
 
 ## Milestone acceptance
 
-M0 also requires parsing the pinned evaluation corpus without panics and
-publishing to crates.io, PyPI, and npm. The evaluation corpus is maintained
-separately. Local tests do not establish corpus acceptance, rule precision,
-or the performance targets in the plan. See [publishing](publishing.md) for
-the packaging and release procedure.
+The [M0 acceptance record](evaluation/m0-2026-09-27.md) records the pinned
+real-document corpus run and its evidence. Use the [corpus procedure](corpus.md)
+to repeat it against parser changes. Rule precision and performance are
+evaluated separately under the implementation plan's later gates. See
+[publishing](publishing.md) for the packaging and release procedure.
 
 The rule engine, suppression evaluation, repository index, parse cache,
 and integrations follow the plan's later milestones.

@@ -1,0 +1,62 @@
+{
+  "byte_identical": true,
+  "corpus_sha256": "3904c6c396606d13a21de7296624bfff99054f60d872cb4da6a346ddb80487cb",
+  "forward_report_sha256": "6c49b4c891f50587cb9f3379b665b091122eba149e066abf3c1246187076bfcb",
+  "frontmatter_errors_are_content_facts": true,
+  "full_runs": 2,
+  "gate": "M0 parser robustness and determinism",
+  "input_orders": [
+    "ascending source/path",
+    "descending source/path"
+  ],
+  "measures_performance_targets": false,
+  "measures_rule_precision": false,
+  "parser_sources": {
+    "Cargo.lock": "e14e850f087b85ee085021f56b9665fb55b8e5e7a0955e370f5944e6f46b76f1",
+    "Cargo.toml": "178745db0b8c7196f6cdb689f9e0346f9b59637aea60a3dd86781b4d605ea7bf",
+    "crates/seiso_diagnostics/Cargo.toml": "2009504e9f83507047c1f8f23cc41884df9309296cea266596afd91e5371171b",
+    "crates/seiso_diagnostics/src/lib.rs": "af47a4090eb963d8284e17b10612561dd8397acbcf7c7dfc6f685dc921263605",
+    "crates/seiso_diagnostics/src/render.rs": "b174ab6a72dd917c3a73547261b4c46aa43edaec80b8d9f443ec8ed63dff3077",
+    "crates/seiso_diagnostics/src/source_map.rs": "b9b5a3afcf2c5fc3640925734b09caa931b17069651e5cc5797208daace81ba3",
+    "crates/seiso_md/Cargo.toml": "f3ee402218976360d0f160859df8a7ebda53fad3fdea608f7f4970a488a59bc2",
+    "crates/seiso_md/examples/corpus_probe.rs": "8268c8fa9fa149748066a8119d95ccdf4ab519d432232d62aa250db28a2b232b",
+    "crates/seiso_md/src/lib.rs": "3f394e697bd3debec07a074e68fbabc71dcbb704d0fe82bb045c910707d5cb6d",
+    "crates/seiso_md/src/mapping.rs": "d17e710b47d732ded169fbe3fe5969abefa0ab722832d8f2c861151da214503a",
+    "crates/seiso_md/src/parser.rs": "dfdd061d9b5f46f90242a0bf94921665878ae3e6e7304f5519ffed19f84902bb",
+    "scripts/run_corpus.py": "e4b6e2562cbe59913bf025a1ba56cd65558d0351c1104203a2f461360629af24"
+  },
+  "platform": "Windows-11-10.0.26200-SP0",
+  "probe_sha256": "208d1b383864ecb0b4f5d4222eadf21f016e41c11c4670f3b20603ca6aea6c08",
+  "python": "3.12.14",
+  "report_archive": "report.json.gz",
+  "report_archive_sha256": "8e6ed1ca4cace53369b2a78bc72fb7360534f6787269d743cf3a7cee1b0bca56",
+  "reverse_report_sha256": "6c49b4c891f50587cb9f3379b665b091122eba149e066abf3c1246187076bfcb",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "schema_version": 1,
+  "successful_parse_invocations": 15624,
+  "summary": {
+    "bytes": 18723068,
+    "files": 1953,
+    "gfm_detected_languages": {
+      "en": 1063,
+      "ja": 523,
+      "zh": 367
+    },
+    "gfm_frontmatter_content_errors": 10,
+    "passed": true,
+    "repositories": 30,
+    "repositories_by_language_focus": {
+      "en": 20,
+      "ja": 5,
+      "zh": 5
+    },
+    "repositories_by_split": {
+      "holdout": 10,
+      "tuning": 20
+    },
+    "status": {
+      "ok": 1953
+    }
+  },
+  "verified_at_utc": "2026-09-27T15:20:32.357666+00:00"
+}
