@@ -6,7 +6,7 @@ license = "MIT"
 repository = "https://github.com/scarletkc/seiso"
 description = "A Markdown convention and linter for project docs written by AI and read by humans and agents"
 readme = "README.md"
-include = ["src/**", "docs/rules/**", "Cargo.toml", "README.md", "LICENSE"]
+include = ["/src/**", "/docs/rules/**", "/Cargo.toml", "/README.md", "/LICENSE"]
 categories = ["command-line-utilities", "development-tools"]
 keywords = ["markdown", "documentation", "linter"]
 
