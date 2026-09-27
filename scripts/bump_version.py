@@ -1,7 +1,8 @@
 """Bump Cargo, Cargo.lock, and npm together.
 
 Usage: python scripts/bump_version.py [patch|minor|major|VERSION] [--note TITLE]
-The default is patch. CLI and PyPI versions inherit the Cargo package version.
+The default is patch, which promotes a prerelease to its stable version.
+Use VERSION (with an optional v prefix) for alpha, beta, or rc releases.
 --note creates docs/release-notes/VERSION.md; write its body before releasing.
 """
 
@@ -11,7 +12,7 @@ import re
 import tomllib
 
 from release import ROOT, release_metadata
-from versions import parse_version, version_key
+from versions import parse_version, python_version, version_key
 
 
 def next_version(current, requested):
@@ -101,7 +102,7 @@ def main():
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(contents, encoding="utf-8", newline="\n")
         print(f"{'Would update' if args.dry_run else 'Updated'} {path.relative_to(ROOT)}")
-    print(f"{current} -> {version}; CLI and PyPI inherit the Cargo version")
+    print(f"{current} -> {version}; CLI/npm: {version}; Python: {python_version(version)}")
 
 
 if __name__ == "__main__":

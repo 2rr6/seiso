@@ -29,25 +29,54 @@ versions remain unchanged. clap reads the package version for the CLI's
 `--version`, and maturin reads it for PyPI. No separate CLI or Python version
 literal needs editing. Release versions use `MAJOR.MINOR.PATCH`, optionally
 followed by `-alpha.N`, `-beta.N`, or `-rc.N`. Python distribution metadata uses
-the corresponding PEP 440 spelling (`1.2.3a1`, `1.2.3b1`, or `1.2.3rc1`);
-Cargo, npm, and the executable retain the Cargo spelling. Other suffixes,
+the corresponding PEP 440 spelling; Cargo, npm, Git tags, release-note filenames,
+and the executable retain the Cargo spelling. Other suffixes,
 including build metadata, are outside this shared registry version format.
 From a prerelease, `patch` promotes its version to the final release; use an
 explicit version to advance the prerelease number.
 
-Prereleases publish under npm's `next` tag and are marked as prereleases on
-GitHub. Stable versions publish under npm's `latest` tag. Version parsing and
-Python normalization are shared in [`scripts/versions.py`](../../scripts/versions.py).
+| Cargo / npm / CLI | Python metadata | npm dist-tag | GitHub Release |
+| --- | --- | --- | --- |
+| `1.2.3-alpha.1` | `1.2.3a1` | `alpha` | Pre-release, not latest |
+| `1.2.3-beta.1` | `1.2.3b1` | `beta` | Pre-release, not latest |
+| `1.2.3-rc.1` | `1.2.3rc1` | `rc` | Pre-release, not latest |
+| `1.2.3` | `1.2.3` | `latest` | Stable release |
+
+Version ordering is semantic: `alpha.9 < alpha.10 < beta.1 < rc.1 < stable`
+for the same base version. Prereleases leave npm's `latest` tag and GitHub's
+latest stable release unchanged. Parsing, ordering, and Python normalization
+are shared in [`scripts/versions.py`](../../scripts/versions.py).
+
+For example, start a prerelease cycle with:
+
+```sh
+python scripts/bump_version.py v1.2.3-alpha.1 --note "Alpha preview"
+```
+
+After each release, advance explicitly to `1.2.3-alpha.2`, `1.2.3-beta.1`,
+or `1.2.3-rc.1` using the same command. Each bump requires a version greater
+than the current Cargo version.
 
 `--note` creates `docs/release-notes/VERSION.md` with a `## Release title`
 heading. Fill in its body with user-facing changes and migration instructions
 before committing. Existing notes are never overwritten. The note is optional,
 but a supplied file with an invalid heading or no body fails preflight.
 
-CI appends an automatic `Changelog` to the handwritten note. It lists commits
-from the nearest reachable previous version tag through the release commit,
-plus a full diff link. When no earlier version tag exists, it lists the full
-commit history. Preview the resulting body locally:
+CI appends an automatic `Changelog` to the handwritten note, with a full diff
+link when a comparison base exists. Only canonical `vVERSION` tags reachable
+from the release commit and semantically lower than the target qualify:
+
+- A prerelease uses the highest qualifying version, including prereleases.
+  The first alpha can compare to the preceding stable release; a later alpha,
+  beta, or rc compares to the preceding release in that cycle.
+- A stable release uses the highest qualifying **stable** version, so its
+  changelog includes changes made throughout the prerelease cycle.
+- Without a qualifying base, the changelog lists the full reachable commit
+  history. The target tag is excluded, so retries keep the same comparison.
+
+For example, `1.2.3-alpha.1` can compare to `v1.2.2`, `1.2.3-alpha.10` to
+`v1.2.3-alpha.9`, and `1.2.3` to `v1.2.2` even when `v1.2.3-rc.1` exists.
+Tag annotation and creation order do not affect selection. Preview the body:
 
 ```sh
 python scripts/github_release.py notes --output target/release-notes.md
@@ -85,8 +114,10 @@ and choose the release branch or tag. Leave all `publish_*` checkboxes unchecked
 The workflow checks version consistency and release notes, runs script and
 Rust tests, verifies the Cargo package, builds and exercises Linux x64 and
 Windows x64 wheels, creates a source archive, and packs and exercises the npm
-executable. Build jobs have no publishing secrets or OIDC permissions and do
-not enter publishing environments. This is the complete validation path. A
+executable. Installation checks require CLI output to match Cargo's SemVer and
+installed Python metadata to match its PEP 440 version. Build jobs have no
+publishing secrets or OIDC permissions and do not enter publishing environments.
+This is the complete validation path. A
 selected registry upload waits for shared preflight and its required artifacts:
 
 | Selection | Builds and verifies |
@@ -144,6 +175,16 @@ includes the generated body, wheels, source archive, npm archive, and the
 in one cannot roll back another. GitHub Release creation waits for all selected
 registries to succeed.
 
+Prereleases use the same workflow and controls. For example, after committing
+and pushing the prerelease bump on `release-preview`, validate and then publish
+that unchanged ref:
+
+```sh
+gh workflow run publish.yml --ref release-preview
+# After the validation run succeeds:
+gh workflow run publish.yml --ref release-preview -f publish_all=true
+```
+
 Re-run the same release commit to finish a partial release, or select only the
 failed destination:
 
@@ -153,7 +194,8 @@ failed destination:
   existing version. Yanked versions stop the release.
 - PyPI retains `skip-existing: true` and uploads missing distribution files.
 - An existing GitHub Release keeps its body and assets; retrying uploads only
-  missing attachments. A draft release requires manual review before retrying.
+  missing attachments. A draft release or a prerelease flag inconsistent with
+  the version stops the retry for manual correction.
 
 Only HTTP 404 means an absent registry resource. Network, authorization,
 rate-limit, malformed-response, and publication errors fail the job. If Cargo
@@ -165,3 +207,30 @@ Verify each registry exposes the intended version, check the GitHub tag's
 commit and attachments, then install the exact version in a clean environment
 and run `seiso --version` and `seiso parse`. Registry publication alone does not
 establish the milestone's corpus acceptance criteria.
+
+## Install a prerelease and promote to stable
+
+Choose one distribution to try an exact release:
+
+```sh
+cargo install seiso --version '=1.2.3-rc.1' --locked
+npm install --global @scarletkc/seiso@1.2.3-rc.1
+python -m pip install 'seiso==1.2.3rc1'
+```
+
+For the most recent release in an npm channel, use `@scarletkc/seiso@alpha`,
+`@scarletkc/seiso@beta`, or `@scarletkc/seiso@rc`. For Python, `python -m pip
+install --upgrade --pre seiso` allows prereleases. Verify the installed CLI with
+`seiso --version`; even the Python installation reports `seiso 1.2.3-rc.1`.
+
+From `1.2.3-rc.1`, promote to `1.2.3` with:
+
+```sh
+python scripts/bump_version.py patch --note "Stable release"
+```
+
+Fill in `docs/release-notes/1.2.3.md`, commit the bump, and repeat validation and
+publication for that commit. Promotion builds new stable artifacts; it does
+not rename prerelease artifacts. The stable npm upload updates `latest`, and
+GitHub creates a stable release. npm channel tags continue to identify their
+last prereleases. Subsequent `patch` bumps advance the patch number normally.

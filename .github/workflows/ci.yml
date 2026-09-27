@@ -15,7 +15,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      docs_only: ${{ steps.scope.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select CI checks
+        id: scope
+        run: python3 scripts/ci_scope.py
+
   test:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
@@ -45,3 +61,42 @@ jobs:
           python -m unittest discover -s scripts -p 'test_*.py'
           python -m unittest discover -s corpus -p 'test_*.py'
           python -m unittest discover -s corpus/evaluation -p 'test_*.py'
+
+  docs:
+    needs: changes
+    if: needs.changes.outputs.docs_only == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo run --locked -p seiso -- check --output-format concise
+
+  check:
+    if: always()
+    needs: [changes, test, docs]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify required checks
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
+          TEST_RESULT: ${{ needs.test.result }}
+          DOCS_RESULT: ${{ needs.docs.result }}
+        run: |
+          test "$CHANGES_RESULT" = success
+          case "$DOCS_ONLY" in
+            true)
+              test "$DOCS_RESULT" = success
+              test "$TEST_RESULT" = skipped
+              ;;
+            false)
+              test "$TEST_RESULT" = success
+              test "$DOCS_RESULT" = skipped
+              ;;
+            *) exit 1 ;;
+          esac

@@ -77,11 +77,15 @@ class ReleaseTests(unittest.TestCase):
             release.validate(self.root, self.metadata)
 
     def test_prerelease_passes_consistency_validation(self):
-        for name in ["Cargo.toml", "Cargo.lock", "npm/seiso/package.json"]:
-            path = self.root / name
-            path.write_text(path.read_text().replace("1.2.3", "1.2.3-rc.1"))
-        self.metadata["packages"][0]["version"] = "1.2.3-rc.1"
-        self.assertEqual(release.validate(self.root, self.metadata), "1.2.3-rc.1")
+        previous = "1.2.3"
+        for version in ["1.2.3-alpha.1", "1.2.3-beta.1", "1.2.3-rc.1"]:
+            with self.subTest(version=version):
+                for name in ["Cargo.toml", "Cargo.lock", "npm/seiso/package.json"]:
+                    path = self.root / name
+                    path.write_text(path.read_text().replace(previous, version))
+                self.metadata["packages"][0]["version"] = version
+                self.assertEqual(release.validate(self.root, self.metadata), version)
+                previous = version
 
     @patch("release.run")
     @patch("release.crate_exists")
@@ -108,7 +112,9 @@ class ReleaseTests(unittest.TestCase):
     @patch("release.run")
     @patch("release.crate_exists", return_value=True)
     def test_complete_crates_retry_does_not_upload(self, exists, run):
-        release.publish_crates("1.2.3", execute=True)
+        for version in ["1.2.3", "1.2.3-alpha.1", "1.2.3-beta.1", "1.2.3-rc.1"]:
+            release.publish_crates(version, execute=True)
+            exists.assert_called_with("seiso", version)
         run.assert_not_called()
 
     @patch("release.run")
@@ -172,10 +178,12 @@ class ReleaseTests(unittest.TestCase):
     @patch("release.run")
     @patch("release.registry_text")
     def test_npm_retry_skips_exact_version(self, read, run):
-        self.npm_archive()
-        read.return_value = '{"name":"@scarletkc/seiso","version":"1.2.3"}'
-        release.publish_npm("1.2.3", self.root, execute=True)
-        read.assert_called_once_with("https://registry.npmjs.org/%40scarletkc%2Fseiso/1.2.3")
+        for version in ["1.2.3", "1.2.3-alpha.1", "1.2.3-beta.1", "1.2.3-rc.1"]:
+            with self.subTest(version=version):
+                self.npm_archive(version)
+                read.return_value = json.dumps({"name": "@scarletkc/seiso", "version": version})
+                release.publish_npm(version, self.root, execute=True)
+                read.assert_called_with(f"https://registry.npmjs.org/%40scarletkc%2Fseiso/{version}")
         run.assert_not_called()
 
     @patch("release.run")
@@ -192,10 +200,27 @@ class ReleaseTests(unittest.TestCase):
     @patch("release.run")
     @patch("release.registry_text", return_value=None)
     def test_prerelease_npm_does_not_replace_latest(self, read, run):
-        self.npm_archive("1.2.3-rc.1")
-        release.publish_npm("1.2.3-rc.1", self.root, execute=True)
-        args = run.call_args.args[0]
-        self.assertEqual(args[args.index("--tag") + 1], "next")
+        for stage in ["alpha", "beta", "rc"]:
+            with self.subTest(stage=stage):
+                version = f"1.2.3-{stage}.1"
+                self.npm_archive(version)
+                release.publish_npm(version, self.root, execute=True)
+                args = run.call_args.args[0]
+                self.assertEqual(args[args.index("--tag") + 1], stage)
+                self.assertNotIn("latest", args)
+
+    @patch("release.run")
+    @patch("release.registry_text")
+    def test_invalid_version_fails_before_registry_access_or_upload(self, read, run):
+        for version in ["1.2.3-beta.01", "1.2.3-preview.1", "v1.2.3-alpha.1"]:
+            with self.subTest(version=version):
+                self.npm_archive(version)
+                with self.assertRaises(ValueError):
+                    release.publish_npm(version, self.root, execute=True)
+                with self.assertRaises(ValueError):
+                    release.publish_crates(version, execute=True)
+        read.assert_not_called()
+        run.assert_not_called()
 
     @patch("release.run")
     def test_wrong_npm_archive_fails_before_upload(self, run):

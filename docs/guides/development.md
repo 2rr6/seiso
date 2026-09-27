@@ -100,10 +100,14 @@ rules are timed separately. Use a native Linux filesystem for local Linux
 measurements; the acceptance thresholds apply to the standard Linux CI runner.
 
 The [CI workflow](../../.github/workflows/ci.yml) runs on pull requests targeting
-`main` and pushes to `main`. It checks formatting, Clippy, tests, and the
-repository's documents with stable rules. Further updates cancel an older
-run for the same PR or branch. Use its manual trigger to check another branch
-before opening a PR.
+`main` and pushes to `main`. Ordinary documentation changes run only the
+repository's document checks on Linux. Other changes and manual runs also
+check formatting, Clippy, Rust tests on Linux and Windows, and Python tests.
+The path classification is defined in
+[`is_documentation`](../../scripts/ci_scope.py); unavailable change history
+selects full validation. The `check` job requires the selected checks to pass.
+Further updates cancel an older run for the same PR or branch. Use the manual
+trigger to check another branch before opening a PR.
 
 Run [Evaluation](../../.github/workflows/evaluation.yml) manually from Actions
 for milestone acceptance, release validation, or substantial rule and parser

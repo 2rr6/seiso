@@ -30,7 +30,8 @@ class PackagingTests(unittest.TestCase):
         filename = self.wheels / f"seiso-{version}-py3-none-{platform}.whl"
         binary = "seiso.exe" if platform == "win_amd64" else "seiso"
         with zipfile.ZipFile(filename, "w") as archive:
-            archive.writestr(f"seiso-{version}.dist-info/METADATA", f"Name: seiso\nVersion: {version}\n")
+            archive.writestr(f"seiso-{version}.dist-info/METADATA", f"Name: seiso\nVersion: {version}\nLicense-File: LICENSE\n")
+            archive.writestr(f"seiso-{version}.dist-info/licenses/LICENSE", "License\n")
             archive.writestr(f"seiso-{version}.data/scripts/{binary}", platform.encode())
 
     def test_packages_both_binaries_and_their_checksums(self):
@@ -93,10 +94,37 @@ class PackagingTests(unittest.TestCase):
         self.sdist(include_license=True)
         verify(self.wheels, self.root)
 
-    def test_source_archive_uses_python_prerelease_version(self):
+    def test_wheel_and_source_archive_use_python_prerelease_version(self):
+        for stage, suffix in [("alpha", "a"), ("beta", "b"), ("rc", "rc")]:
+            with self.subTest(stage=stage):
+                for path in self.wheels.iterdir():
+                    path.unlink()
+                (self.root / "Cargo.toml").write_text(f'[package]\nversion = "1.2.3-{stage}.10"\n')
+                self.sdist(include_license=True, version=f"1.2.3{suffix}10")
+                self.wheel("win_amd64", f"1.2.3{suffix}10")
+                verify(self.wheels, self.root)
+
+    def test_wrong_prerelease_metadata_fails_before_npm_files_are_written(self):
         (self.root / "Cargo.toml").write_text('[package]\nversion = "1.2.3-rc.1"\n')
-        self.sdist(include_license=True, version="1.2.3rc1")
-        verify(self.wheels, self.root)
+        (self.output / "package.json").write_text('{"name":"@scarletkc/seiso","version":"1.2.3-rc.1"}')
+        for version in ["1.2.3-rc.1", "1.2.3rc2", "1.2.3b1", "1.2.3"]:
+            with self.subTest(version=version):
+                for path in self.wheels.iterdir():
+                    path.unlink()
+                self.wheel("win_amd64", version)
+                self.wheel("manylinux_2_17_x86_64", version)
+                with self.assertRaisesRegex(ValueError, "does not match"):
+                    prepare(self.wheels, self.output, self.root)
+                with self.assertRaisesRegex(ValueError, "name/version"):
+                    verify(self.wheels, self.root)
+                self.assertFalse((self.output / "native").exists())
+                self.assertFalse((self.output / "LICENSE").exists())
+
+    def test_wrong_source_archive_version_is_rejected(self):
+        (self.root / "Cargo.toml").write_text('[package]\nversion = "1.2.3-alpha.10"\n')
+        self.sdist(include_license=True, version="1.2.3a9")
+        with self.assertRaisesRegex(ValueError, "name/version"):
+            verify(self.wheels, self.root)
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from release import ROOT, release_metadata, run
-from versions import VERSION, parse_version
+from versions import VERSION, parse_version, version_key
 
 
 def git(*args, root=ROOT):
@@ -18,6 +18,7 @@ def git(*args, root=ROOT):
 
 
 def validate_tag(version, root=ROOT):
+    parse_version(version)
     tag = f"v{version}"
     sha = git("rev-parse", "HEAD", root=root)
     tags = git("tag", "--list", tag, root=root).splitlines()
@@ -38,15 +39,21 @@ def handwritten_note(path):
     return contents
 
 
+def comparison_base(version, root=ROOT):
+    """Use the highest earlier reachable version; stable releases compare to stable."""
+    current = version_key(version)
+    prerelease = parse_version(version)[1]
+    candidates = [name for name in git("tag", "--merged", "HEAD", root=root).splitlines()
+                  if name.startswith("v") and VERSION.fullmatch(name[1:])
+                  and version_key(name[1:]) < current
+                  and (prerelease or parse_version(name[1:])[1] is None)]
+    return max(candidates, key=lambda name: version_key(name[1:]), default="")
+
+
 def compose_notes(version, repository, root=ROOT):
     tag, _ = validate_tag(version, root)
     note = handwritten_note(root / "docs/release-notes" / f"{version}.md")
-    candidates = [name for name in git("tag", "--merged", "HEAD", root=root).splitlines()
-                  if name != tag and name.startswith("v") and VERSION.fullmatch(name[1:])]
-    previous = ""
-    if candidates:
-        matches = [arg for candidate in candidates for arg in ("--match", candidate)]
-        previous = git("describe", "--tags", "--abbrev=0", *matches, "HEAD", root=root)
+    previous = comparison_base(version, root)
     commit_range = f"{previous}..HEAD" if previous else "HEAD"
     commits = git("log", commit_range, "--pretty=format:- %s (%h)", "--reverse", root=root)
     paragraphs = [note] if note else []
@@ -77,6 +84,7 @@ def get_release(repository, tag):
 
 def publish_github(version, repository, notes, directory, execute=False, root=ROOT):
     tag, sha = validate_tag(version, root)
+    prerelease = parse_version(version)[1] is not None
     assets = sorted(path for path in directory.iterdir()
                     if path.is_file() and path.name.endswith((".whl", ".tar.gz", ".tgz", ".crate")))
     if not notes.is_file() or not assets:
@@ -88,13 +96,15 @@ def publish_github(version, repository, notes, directory, execute=False, root=RO
     if existing is None:
         command = ["gh", "release", "create", tag, "--repo", repository, "--target", sha,
                    "--title", f"seiso {tag}", "--notes-file", str(notes)]
-        if parse_version(version)[1]:
-            command.append("--prerelease")
+        if prerelease:
+            command.extend(["--prerelease", "--latest=false"])
         run(command, root)
         published = set()
     else:
         if existing["draft"]:
             raise ValueError(f"{tag} has a draft release; review it before retrying")
+        if existing["prerelease"] != prerelease:
+            raise ValueError(f"{tag} has an inconsistent prerelease flag; correct it before retrying")
         published = {asset["name"] for asset in existing["assets"]}
         print(f"GitHub Release {tag} already exists; uploading only missing assets")
     missing = [str(asset) for asset in assets if asset.name not in published]
