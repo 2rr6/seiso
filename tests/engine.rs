@@ -247,10 +247,14 @@ fn rule_documentation_examples_execute_the_published_contract() {
                 result.diagnostics
             );
             if index == 0 {
-                insta::assert_json_snapshot!(
-                    format!("{}_example", rule.code.to_ascii_lowercase()),
-                    result.diagnostics
-                );
+                insta::with_settings!({
+                    filters => vec![(r"/blob/v[^/]+/", "/blob/v[version]/")]
+                }, {
+                    insta::assert_json_snapshot!(
+                        format!("{}_example", rule.code.to_ascii_lowercase()),
+                        result.diagnostics
+                    );
+                });
             }
         }
     }

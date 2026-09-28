@@ -20,7 +20,7 @@ expression: result.diagnostics
       "end": 36
     },
     "fix": null,
-    "url": null,
+    "url": "https://github.com/scarletkc/seiso/blob/v[version]/docs/rules/VOX001.md",
     "related": [],
     "suggestion": "State the document's instructions or facts directly for its readers."
   }

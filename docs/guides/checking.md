@@ -85,7 +85,11 @@ seiso index --dump > index.json
 
 Text includes source excerpts. Concise output puts each diagnostic and its
 suggestion on one line. JSON is a sorted array of diagnostics; tool errors go to
-stderr. Policy JSON includes effective settings, kind resolution, enabled rules,
+stderr. Each JSON diagnostic's `url` links to its rule explanation at the
+release tag matching the binary's package version. SARIF exposes the same link
+in each rule's `helpUri`.
+
+Policy JSON includes effective settings, kind resolution, enabled rules,
 configuration exclusions, and suppression records. The index dump includes
 effective kind, language, domain, anchors, and outgoing links.
 

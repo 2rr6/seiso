@@ -20,7 +20,7 @@ expression: result.diagnostics
       "end": 56
     },
     "fix": null,
-    "url": null,
+    "url": "https://github.com/scarletkc/seiso/blob/v[version]/docs/rules/PTR001.md",
     "related": [],
     "suggestion": "Link to the file, symbol, or heading that answers the reader's question."
   }

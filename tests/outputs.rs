@@ -32,6 +32,50 @@ fn diagnostic() -> Diagnostic {
 }
 
 #[test]
+fn rule_documentation_links_are_versioned_and_point_to_existing_pages() {
+    let diagnostics: Vec<_> = seiso::rules::rule_codes()
+        .map(|code| Diagnostic::new("page.md", "", code, Span::new(0, 0), "Problem", "Fix"))
+        .collect();
+    let json: serde_json::Value =
+        serde_json::from_str(&seiso::diagnostics::render_json(&diagnostics).unwrap()).unwrap();
+    let sarif: serde_json::Value =
+        serde_json::from_str(&render_sarif(&diagnostics).unwrap()).unwrap();
+    let rules = sarif["runs"][0]["tool"]["driver"]["rules"]
+        .as_array()
+        .unwrap();
+    assert_eq!(rules.len(), diagnostics.len());
+    for diagnostic in json.as_array().unwrap() {
+        let code = diagnostic["code"].as_str().unwrap();
+        let path = format!("docs/rules/{code}.md");
+        let expected = format!(
+            "https://github.com/scarletkc/seiso/blob/v{}/{path}",
+            env!("CARGO_PKG_VERSION")
+        );
+        assert_eq!(diagnostic["url"], expected);
+        assert!(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join(path)
+                .is_file()
+        );
+        let rule = rules.iter().find(|rule| rule["id"] == code).unwrap();
+        assert_eq!(rule["helpUri"], expected);
+    }
+}
+
+#[test]
+fn unknown_diagnostic_codes_do_not_link_to_nonexistent_rule_pages() {
+    let diagnostic = Diagnostic::new("page.md", "", "X001", Span::new(0, 0), "Problem", "Fix");
+    assert!(diagnostic.url.is_none());
+    let sarif: serde_json::Value =
+        serde_json::from_str(&render_sarif(&[diagnostic]).unwrap()).unwrap();
+    assert!(
+        sarif["runs"][0]["tool"]["driver"]["rules"][0]
+            .get("helpUri")
+            .is_none()
+    );
+}
+
+#[test]
 fn sarif_preserves_unicode_locations_byte_edits_help_and_related_locations() {
     let diagnostic = diagnostic();
     let value: serde_json::Value =

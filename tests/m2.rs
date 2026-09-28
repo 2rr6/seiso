@@ -62,6 +62,30 @@ fn status(output: &Output, expected: i32) {
 const LINKS: &str = "preview=true\n[lint]\nselect=['LNK001','LNK002','SUP002']\n";
 
 #[test]
+fn cli_diagnostics_include_versioned_rule_documentation_links() {
+    let root = workspace("[lint]\nselect=['LNK001']\n");
+    write(root.path(), "guide.md", "[Missing](missing.md)\n");
+    let expected = format!(
+        "https://github.com/scarletkc/seiso/blob/v{}/docs/rules/LNK001.md",
+        env!("CARGO_PKG_VERSION")
+    );
+    let json = run(root.path(), &["check", "--output-format", "json"], None);
+    status(&json, 1);
+    assert!(json.stderr.is_empty());
+    let json = value(&json);
+    assert_eq!(json.as_array().unwrap().len(), 1);
+    assert_eq!(json[0]["url"], expected);
+    let sarif = run(root.path(), &["check", "--output-format", "sarif"], None);
+    status(&sarif, 1);
+    assert!(sarif.stderr.is_empty());
+    let sarif = value(&sarif);
+    assert_eq!(
+        sarif["runs"][0]["tool"]["driver"]["rules"][0]["helpUri"],
+        expected
+    );
+}
+
+#[test]
 fn cold_warm_and_disabled_caches_produce_identical_reports() {
     let root = workspace(LINKS);
     write(

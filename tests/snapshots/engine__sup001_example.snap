@@ -20,7 +20,7 @@ expression: result.diagnostics
       "end": 61
     },
     "fix": null,
-    "url": null,
+    "url": "https://github.com/scarletkc/seiso/blob/v[version]/docs/rules/SUP001.md",
     "related": [],
     "suggestion": "Use `<!-- seiso: allow CODE -- reason -->` before a block or inside a paragraph, list item, or table cell; put `allow-file` before the first content block."
   }

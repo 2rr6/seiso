@@ -20,7 +20,7 @@ expression: result.diagnostics
       "end": 43
     },
     "fix": null,
-    "url": null,
+    "url": "https://github.com/scarletkc/seiso/blob/v[version]/docs/rules/STL002.md",
     "related": [],
     "suggestion": "Replace the state with the command or dashboard that checks it; keep dated results in a release record."
   }

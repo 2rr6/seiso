@@ -20,7 +20,7 @@ expression: result.diagnostics
       "end": 37
     },
     "fix": null,
-    "url": null,
+    "url": "https://github.com/scarletkc/seiso/blob/v[version]/docs/rules/VOX003.md",
     "related": [],
     "suggestion": "Describe the resulting behavior or procedure; move implementation history to an ADR, plan, or change record."
   },
@@ -41,7 +41,7 @@ expression: result.diagnostics
       "end": 57
     },
     "fix": null,
-    "url": null,
+    "url": "https://github.com/scarletkc/seiso/blob/v[version]/docs/rules/VOX003.md",
     "related": [],
     "suggestion": "Describe the resulting behavior or procedure; move implementation history to an ADR, plan, or change record."
   }

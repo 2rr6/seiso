@@ -95,10 +95,14 @@ fn cross_rule_documentation_examples_execute_and_snapshot_the_contract() {
                 report.diagnostics
             );
             if example_index == 0 {
-                insta::assert_json_snapshot!(
-                    format!("{}_example", rule.code.to_ascii_lowercase()),
-                    diagnostics
-                );
+                insta::with_settings!({
+                    filters => vec![(r"/blob/v[^/]+/", "/blob/v[version]/")]
+                }, {
+                    insta::assert_json_snapshot!(
+                        format!("{}_example", rule.code.to_ascii_lowercase()),
+                        diagnostics
+                    );
+                });
             }
         }
     }

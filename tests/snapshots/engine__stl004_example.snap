@@ -20,7 +20,7 @@ expression: result.diagnostics
       "end": 49
     },
     "fix": null,
-    "url": null,
+    "url": "https://github.com/scarletkc/seiso/blob/v[version]/docs/rules/STL004.md",
     "related": [],
     "suggestion": "State the supported version range, or link to the manifest or release record that owns the version."
   }

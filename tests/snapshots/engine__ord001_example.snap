@@ -20,7 +20,7 @@ expression: result.diagnostics
       "end": 273
     },
     "fix": null,
-    "url": null,
+    "url": "https://github.com/scarletkc/seiso/blob/v[version]/docs/rules/ORD001.md",
     "related": [
       {
         "filename": "docs/guide.md",

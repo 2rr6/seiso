@@ -20,7 +20,7 @@ expression: diagnostics
       "end": 155
     },
     "fix": null,
-    "url": null,
+    "url": "https://github.com/scarletkc/seiso/blob/v[version]/docs/rules/OWN002.md",
     "related": [
       {
         "filename": "reference.md",
@@ -58,7 +58,7 @@ expression: diagnostics
       "end": 177
     },
     "fix": null,
-    "url": null,
+    "url": "https://github.com/scarletkc/seiso/blob/v[version]/docs/rules/OWN002.md",
     "related": [
       {
         "filename": "guide.md",

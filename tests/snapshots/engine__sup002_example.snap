@@ -32,7 +32,7 @@ expression: result.diagnostics
         }
       ]
     },
-    "url": null,
+    "url": "https://github.com/scarletkc/seiso/blob/v[version]/docs/rules/SUP002.md",
     "related": [],
     "suggestion": "Remove LNK001 from the declaration, or remove the comment if it lists no other rules."
   }

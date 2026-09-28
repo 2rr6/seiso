@@ -20,7 +20,7 @@ expression: result.diagnostics
       "end": 39
     },
     "fix": null,
-    "url": null,
+    "url": "https://github.com/scarletkc/seiso/blob/v[version]/docs/rules/MIX001.md",
     "related": [],
     "suggestion": "Move the decision rationale to an ADR and keep a link beside the procedure or contract it explains."
   }

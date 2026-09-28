@@ -20,7 +20,7 @@ expression: result.diagnostics
       "end": 77
     },
     "fix": null,
-    "url": null,
+    "url": "https://github.com/scarletkc/seiso/blob/v[version]/docs/rules/LNK001.md",
     "related": [],
     "suggestion": "Update the path or restore the target; paths resolve from this document's directory, or from the workspace root when they start with /, and seiso does not add .md or index.md."
   }
