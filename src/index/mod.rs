@@ -238,9 +238,40 @@ pub fn github_slug(heading: &str) -> String {
         .replace(' ', "-")
 }
 
+/// A heading's source ends with a literal attribute list: not inside a code
+/// span, and not opened by an escaped brace, which attribute-list syntax keeps
+/// as text.
+fn source_ends_with_attribute_list(source: &str) -> bool {
+    static ATX_CLOSING: OnceLock<Regex> = OnceLock::new();
+    static SETEXT_UNDERLINE: OnceLock<Regex> = OnceLock::new();
+    static LIST: OnceLock<Regex> = OnceLock::new();
+    let mut lines: Vec<&str> = source
+        .lines()
+        .map(str::trim_end)
+        .filter(|line| !line.is_empty())
+        .collect();
+    let underline = SETEXT_UNDERLINE.get_or_init(|| Regex::new(r"^[ \t]*(?:=+|-+)$").unwrap());
+    if lines.len() > 1 && lines.last().is_some_and(|line| underline.is_match(line)) {
+        lines.pop();
+    }
+    let Some(line) = lines.last() else {
+        return false;
+    };
+    let line = ATX_CLOSING
+        .get_or_init(|| Regex::new(r"[ \t]+#+$").unwrap())
+        .replace(line, "");
+    LIST.get_or_init(|| Regex::new(r"(?:^|[^\\])\{:?[^{}]*\}$").unwrap())
+        .is_match(&line)
+}
+
 fn document_anchors(document: &Document) -> BTreeMap<String, Span> {
     let mut anchors = BTreeMap::new();
     let mut seen = BTreeSet::new();
+    // Site generators read a trailing attribute list such as `{#id}` or
+    // `{: #id .class}` as the heading's id and omit it from the visible text.
+    static HEADING_ATTRIBUTES: OnceLock<Regex> = OnceLock::new();
+    let heading_attributes =
+        HEADING_ATTRIBUTES.get_or_init(|| Regex::new(r"\s*\{:?\s*([^{}]*)\}\s*$").unwrap());
     for block in document
         .blocks
         .iter()
@@ -258,6 +289,21 @@ fn document_anchors(document: &Document) -> BTreeMap<String, Span> {
             slug = format!("{base}-{suffix}");
         }
         anchors.entry(slug).or_insert(block.span);
+        // The flattened text has lost code delimiters and escapes, so confirm
+        // the list in the heading's source before trusting it.
+        if let Some(attributes) = heading_attributes.captures(text)
+            && source_ends_with_attribute_list(&document.source[block.span.start..block.span.end])
+        {
+            let visible = &text[..attributes.get(0).unwrap().start()];
+            anchors.entry(github_slug(visible)).or_insert(block.span);
+            for id in attributes[1]
+                .split_whitespace()
+                .filter_map(|token| token.strip_prefix('#'))
+                .filter(|id| !id.is_empty())
+            {
+                anchors.entry(id.to_owned()).or_insert(block.span);
+            }
+        }
     }
     static TAG: OnceLock<Regex> = OnceLock::new();
     static ATTRIBUTE: OnceLock<Regex> = OnceLock::new();
@@ -463,6 +509,63 @@ mod tests {
         }
         assert_eq!(github_slug("one  two_name — x"), "one--two_name--x");
         assert!(index.anchor_span("a.md", "安装配置").is_some());
+    }
+
+    #[test]
+    fn heading_attribute_lists_add_declared_ids_and_the_visible_slug() {
+        let root = tempfile::tempdir().unwrap();
+        let source = "# Array some {#array-some}\n## 安装 { #install .note }\n## Options {: #opts }\n## Classes only {.wide}\n## Template {name}\n# Empty {#}\n";
+        let index = WorkspaceIndex::new(
+            root.path().to_path_buf(),
+            vec![file(root.path(), "a.md", source)],
+            true,
+        );
+        let anchors = index.anchors("a.md").unwrap();
+        for expected in [
+            "array-some",
+            "array-some-array-some",
+            "install",
+            "安装",
+            "opts",
+            "options",
+            "classes-only",
+            "template",
+            "template-name",
+        ] {
+            assert!(
+                anchors.contains(expected),
+                "missing {expected:?} from {anchors:?}"
+            );
+        }
+        assert!(!anchors.contains("") && !anchors.contains("name"));
+        assert_eq!(
+            index.anchor_span("a.md", "install"),
+            index.anchor_span("a.md", "安装")
+        );
+    }
+
+    #[test]
+    fn heading_attribute_lists_in_code_or_after_an_escape_are_text() {
+        let root = tempfile::tempdir().unwrap();
+        let source = "# Example `{#ghost}`\n\n# Escaped \\{#escaped}\n\n# Closed {#closed} ##\n\nSetext {#setext}\n===\n";
+        let index = WorkspaceIndex::new(
+            root.path().to_path_buf(),
+            vec![file(root.path(), "a.md", source)],
+            true,
+        );
+        let anchors = index.anchors("a.md").unwrap();
+        for expected in ["example-ghost", "escaped-escaped", "closed", "setext"] {
+            assert!(
+                anchors.contains(expected),
+                "missing {expected:?} from {anchors:?}"
+            );
+        }
+        for absent in ["ghost", "escaped"] {
+            assert!(
+                !anchors.contains(absent),
+                "unexpected {absent:?} in {anchors:?}"
+            );
+        }
     }
 
     #[test]
