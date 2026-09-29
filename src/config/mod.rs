@@ -241,7 +241,21 @@ impl Config {
         let label = source
             .clone()
             .unwrap_or_else(|| directory.join("seiso.toml"));
-        let settings: Settings = value.try_into().map_err(|e| invalid(&label, e))?;
+        let mut value = value;
+        let extend_exclude = take_extension_list(&mut value, "extend-exclude", &label)?;
+        let (extend_select, extend_ignore) =
+            if let Some(lint) = value.as_table_mut().and_then(|table| table.get_mut("lint")) {
+                (
+                    take_extension_list(lint, "extend-select", &label)?,
+                    take_extension_list(lint, "extend-ignore", &label)?,
+                )
+            } else {
+                (Vec::new(), Vec::new())
+            };
+        let mut settings: Settings = value.try_into().map_err(|e| invalid(&label, e))?;
+        settings.exclude.extend(extend_exclude);
+        settings.lint.select.extend(extend_select);
+        settings.lint.ignore.extend(extend_ignore);
         validate_settings(&settings, &label)?;
         let include = compile_patterns(&settings.include, &label, "include")?;
         let exclude = compile_patterns(&settings.exclude, &label, "exclude")?;
@@ -761,15 +775,54 @@ fn overlay(base: &mut toml::Value, local: toml::Value) {
     match (base, local) {
         (toml::Value::Table(base), toml::Value::Table(local)) => {
             for (key, value) in local {
-                if let Some(existing) = base.get_mut(&key) {
-                    overlay(existing, value);
-                } else {
-                    base.insert(key, value);
+                match (base.get_mut(&key), value) {
+                    (Some(existing), toml::Value::Array(mut additions))
+                        if matches!(
+                            key.as_str(),
+                            "extend-select" | "extend-ignore" | "extend-exclude"
+                        ) =>
+                    {
+                        if let toml::Value::Array(inherited) = existing {
+                            inherited.append(&mut additions);
+                        }
+                    }
+                    (Some(existing), value) => overlay(existing, value),
+                    (None, value) => {
+                        base.insert(key, value);
+                    }
                 }
             }
         }
         (base, local) => *base = local,
     }
+}
+
+fn take_extension_list(
+    value: &mut toml::Value,
+    field: &str,
+    path: &Path,
+) -> Result<Vec<String>, ConfigError> {
+    let Some(table) = value.as_table_mut() else {
+        return Ok(Vec::new());
+    };
+    let Some(value) = table.remove(field) else {
+        return Ok(Vec::new());
+    };
+    let toml::Value::Array(entries) = value else {
+        return Err(invalid(
+            path,
+            format!("{field} must be an array of strings"),
+        ));
+    };
+    entries
+        .into_iter()
+        .map(|entry| {
+            entry
+                .as_str()
+                .map(str::to_owned)
+                .ok_or_else(|| invalid(path, format!("{field} must contain only strings")))
+        })
+        .collect()
 }
 
 fn read_document(path: &Path) -> Result<Option<toml::Value>, ConfigError> {

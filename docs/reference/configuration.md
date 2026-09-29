@@ -18,6 +18,11 @@ Parent configurations are not implicitly merged. `extend = "path/to/base.toml"`
 opts into inheritance; the path is relative to the declaring configuration.
 Tables merge key by key. Arrays, including `include`, `exclude`, `[[kinds]]`,
 and `lint.select`, replace the inherited value instead of adding to it.
+`extend-exclude`, `lint.extend-select`, and `lint.extend-ignore` are additive:
+their entries from each configuration in the inheritance chain are appended,
+in order, to the effective `exclude`, `lint.select`, and `lint.ignore` lists.
+If a child replaces one of those base arrays, the inherited additions still
+apply. `seiso policy` reports the effective lists.
 Effective glob patterns, including inherited patterns, are relative to the
 selected configuration's directory. `--config PATH` selects one configuration
 for every file; its glob patterns are relative to the workspace root.
@@ -112,8 +117,9 @@ rules run; it does not change detection.
 ## Rule selection
 
 Selectors accept `ALL`, an implemented family such as `KND`, or an implemented
-full code such as `KND001`. `select` defaults to `ALL`; `--select` replaces it,
-and `--extend-select` adds selectors. Selection and ignore conflicts use the
+full code such as `KND001`. `select` defaults to `ALL`; `--select` replaces it
+and any `lint.extend-select` entries, and `--extend-select` adds selectors.
+Selection and ignore conflicts use the
 more specific entry; equal specificity favors ignore. Preview rules are then
 removed unless `preview = true` or `--preview` is set. Per-file ignores and
 kind applicability further restrict enabled rules. Suppression is applied

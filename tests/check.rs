@@ -1,4 +1,6 @@
 use std::io::Write;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
 
@@ -721,6 +723,38 @@ fn init_writes_at_the_repository_root_with_exclusions_and_community_kinds() {
         "# Automatically created by seiso.\n*\n"
     );
     assert!(root.join(".seiso_cache/CACHEDIR.TAG").is_file());
+}
+
+#[cfg(unix)]
+#[test]
+fn init_config_permissions_follow_the_process_umask() {
+    let workspace = TempDir::new().unwrap();
+    let root = workspace.path();
+    std::fs::create_dir(root.join(".git")).unwrap();
+
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg("umask 027; exec \"$SEISO_BIN\" init")
+        .env("SEISO_BIN", env!("CARGO_BIN_EXE_seiso"))
+        .current_dir(root)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .unwrap();
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let mode = std::fs::metadata(root.join("seiso.toml"))
+        .unwrap()
+        .permissions()
+        .mode()
+        & 0o777;
+    assert_eq!(mode, 0o640);
 }
 
 #[test]

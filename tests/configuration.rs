@@ -266,6 +266,112 @@ min-jaccard = 0.9
 }
 
 #[test]
+fn extension_lists_accumulate_across_three_levels_and_apply_cli_overrides() {
+    let dir = tempdir().unwrap();
+    write(
+        dir.path(),
+        "base.toml",
+        r#"
+exclude = ["vendor/**"]
+extend-exclude = ["generated/**"]
+[lint]
+select = ["KND"]
+extend-select = ["DUP"]
+ignore = ["KND002"]
+extend-ignore = ["STL"]
+"#,
+    );
+    write(
+        dir.path(),
+        "middle.toml",
+        r#"
+extend = "base.toml"
+exclude = ["legacy/**"]
+extend-exclude = ["build/**"]
+[lint]
+select = ["LNK"]
+extend-select = ["PTR"]
+extend-ignore = ["LNK001"]
+"#,
+    );
+    write(
+        dir.path(),
+        "child/seiso.toml",
+        r#"
+extend = "../middle.toml"
+extend-exclude = ["nested/**"]
+[lint]
+extend-select = ["KND001"]
+"#,
+    );
+
+    let config = Config::load(&dir.path().join("child/seiso.toml")).unwrap();
+    assert_eq!(
+        config.settings.exclude,
+        ["legacy/**", "generated/**", "build/**", "nested/**"]
+    );
+    assert_eq!(config.settings.lint.select, ["LNK", "DUP", "PTR", "KND001"]);
+    assert_eq!(config.settings.lint.ignore, ["KND002", "STL", "LNK001"]);
+    assert!(config.excludes(Path::new("nested/page.md")));
+    assert!(config.excludes(Path::new("generated/page.md")));
+    assert!(!config.excludes(Path::new("vendor/page.md")));
+
+    let reported = serde_json::to_value(&config.settings).unwrap();
+    assert_eq!(
+        reported["lint"]["select"],
+        serde_json::json!(["LNK", "DUP", "PTR", "KND001"])
+    );
+    assert!(reported["lint"].get("extend-select").is_none());
+    assert!(reported.get("extend-exclude").is_none());
+
+    let overrides = CliOverrides {
+        select: Some(vec!["ORD".into()]),
+        extend_select: vec!["PTR".into()],
+        preview: true,
+    };
+    let selected = config
+        .selected_rules(Path::new("docs/page.md"), &overrides)
+        .unwrap();
+    assert!(selected.iter().any(|code| code.starts_with("ORD")));
+    assert!(selected.iter().any(|code| code.starts_with("PTR")));
+    assert!(!selected.iter().any(|code| code.starts_with("LNK")));
+}
+
+#[test]
+fn invalid_extension_selectors_are_rejected() {
+    let dir = tempdir().unwrap();
+    write(
+        dir.path(),
+        "seiso.toml",
+        "[lint]\nextend-select = ['NOT_A_RULE']\n",
+    );
+    let error = Config::load(&dir.path().join("seiso.toml")).unwrap_err();
+    assert!(matches!(error, ConfigError::Invalid { .. }));
+    assert!(error.to_string().contains("NOT_A_RULE"));
+}
+
+#[test]
+fn invalid_inherited_extension_list_is_not_hidden_by_child_array() {
+    let dir = tempdir().unwrap();
+    write(dir.path(), "base.toml", "[lint]\nextend-select = 'DUP'\n");
+    write(
+        dir.path(),
+        "child/seiso.toml",
+        "extend = '../base.toml'\n[lint]\nextend-select = ['PTR']\n",
+    );
+
+    let error = Config::load(&dir.path().join("child/seiso.toml"))
+        .map(|_| ())
+        .expect_err("an invalid inherited extension list must be rejected");
+    assert!(matches!(error, ConfigError::Invalid { .. }));
+    assert!(
+        error
+            .to_string()
+            .contains("extend-select must be an array of strings")
+    );
+}
+
+#[test]
 fn recursive_extend_paths_use_each_declaring_directory() {
     let dir = tempdir().unwrap();
     write(dir.path(), "shared/base.toml", "preview = true");
