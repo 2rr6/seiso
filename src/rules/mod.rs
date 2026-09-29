@@ -51,7 +51,8 @@ pub fn resolve_kind(document: &Document, mapped: Option<&str>) -> KindResolution
                         "The generated kind can only be assigned in configuration.".into()
                     } else {
                         format!(
-                            "Unknown kind {kind:?}; use one of the lowercase kinds readme, howto, reference, runbook, adr, plan, or changelog."
+                            "Unknown kind {kind:?}; use one of the lowercase kinds {}.",
+                            declarable_kinds()
                         )
                     }),
                 }
@@ -68,6 +69,18 @@ pub fn resolve_kind(document: &Document, mapped: Option<&str>) -> KindResolution
         problem: mapped.is_none().then(|| {
             "Declare kind in frontmatter or add a matching [[kinds]] configuration entry.".into()
         }),
+    }
+}
+
+/// Kinds that frontmatter can declare, listed for diagnostic text.
+fn declarable_kinds() -> String {
+    let kinds: Vec<_> = crate::config::KINDS
+        .into_iter()
+        .filter(|kind| *kind != "generated")
+        .collect();
+    match kinds.split_last() {
+        Some((last, rest)) => format!("{}, or {last}", rest.join(", ")),
+        None => String::new(),
     }
 }
 
@@ -214,7 +227,10 @@ fn kind_diagnostics(context: &CheckContext<'_>, enabled: &BTreeSet<String>) -> V
     let mut span = Span::new(0, 0);
     let mut message =
         "Document kind is not declared and no kind mapping matches this file.".to_owned();
-    let mut suggestion = "Declare kind as readme, howto, reference, runbook, adr, plan, or changelog in YAML frontmatter, or add a matching [[kinds]] configuration entry.";
+    let mut suggestion = format!(
+        "Declare kind as {} in YAML frontmatter, or add a matching [[kinds]] configuration entry.",
+        declarable_kinds()
+    );
     if let Some(frontmatter) = &document.frontmatter {
         span = frontmatter.span;
         if let Some(error) = frontmatter.errors.first() {
@@ -223,7 +239,7 @@ fn kind_diagnostics(context: &CheckContext<'_>, enabled: &BTreeSet<String>) -> V
                 "Document kind cannot be resolved because the frontmatter is invalid: {}.",
                 error.message.trim_end_matches('.')
             );
-            suggestion = "Correct the YAML frontmatter so its kind declaration can be read.";
+            suggestion = "Correct the YAML frontmatter so its kind declaration can be read.".into();
         } else if let Some(kind) = &frontmatter.kind {
             if kind != "generated" && crate::config::KINDS.contains(&kind.as_str()) {
                 return Vec::new();
@@ -231,10 +247,13 @@ fn kind_diagnostics(context: &CheckContext<'_>, enabled: &BTreeSet<String>) -> V
             code = "KND002";
             if kind == "generated" {
                 message = "The generated kind is declared in frontmatter; it can only be assigned in configuration.".into();
-                suggestion = "Remove this declaration and assign generated with a [[kinds]] path mapping if a tool generates this file.";
+                suggestion = "Remove this declaration and assign generated with a [[kinds]] path mapping if a tool generates this file.".into();
             } else {
                 message = format!("Unknown document kind {kind:?}.");
-                suggestion = "Use one of the lowercase kinds readme, howto, reference, runbook, adr, plan, or changelog in frontmatter.";
+                suggestion = format!(
+                    "Use one of the lowercase kinds {} in frontmatter.",
+                    declarable_kinds()
+                );
             }
         } else if context.config.kind_for(context.path).is_some() {
             return Vec::new();
