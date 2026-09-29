@@ -109,6 +109,30 @@ fn nested_config_replaces_parent_and_frontmatter_precedes_mapping() {
 }
 
 #[test]
+fn agents_kind_is_reported_from_mapping_and_frontmatter() {
+    let workspace = configured_workspace();
+    let root = workspace.path();
+    write(
+        root,
+        "seiso.toml",
+        "[[kinds]]\npath = '**/AGENTS.md'\nkind = 'agents'\n",
+    );
+    write(root, "docs/AGENTS.md", "# Agent instructions\n");
+    write(
+        root,
+        "docs/other.md",
+        "---\nkind: agents\n---\n# Agent instructions\n",
+    );
+    let output = parse(root, &[], None);
+    assert_eq!(output.status.code(), Some(0));
+    let report = json(&output);
+    assert_eq!(report["files"][0]["kind"]["value"], "agents");
+    assert_eq!(report["files"][0]["kind"]["source"], "configuration");
+    assert_eq!(report["files"][1]["kind"]["value"], "agents");
+    assert_eq!(report["files"][1]["kind"]["source"], "frontmatter");
+}
+
+#[test]
 fn generated_cannot_be_claimed_by_a_document() {
     let workspace = configured_workspace();
     write(

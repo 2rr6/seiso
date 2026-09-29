@@ -683,6 +683,108 @@ fn init_writes_at_the_repository_root_with_exclusions_and_community_kinds() {
     assert!(root.join(".seiso_cache/CACHEDIR.TAG").is_file());
 }
 
+#[test]
+fn init_suggests_agent_kinds_for_discovered_nested_instructions() {
+    let workspace = TempDir::new().unwrap();
+    let root = workspace.path();
+    std::fs::create_dir(root.join(".git")).unwrap();
+    write(
+        root,
+        "AGENTS.md",
+        "# Agent instructions\n\nRun the project checks.\n",
+    );
+    write(root, "docs/CLAUDE.md", "@AGENTS.md\n");
+    write(root, ".claude/skills/review/SKILL.md", "# Review\n");
+    write(
+        root,
+        ".github/copilot-instructions.md",
+        "# Copilot instructions\n",
+    );
+    assert_eq!(run(root, &["init"], None).status.code(), Some(0));
+    let config = std::fs::read_to_string(root.join("seiso.toml")).unwrap();
+    for pattern in [
+        "**/AGENTS.md",
+        "**/CLAUDE.md",
+        "**/SKILL.md",
+        ".github/copilot-instructions.md",
+    ] {
+        assert!(
+            config.contains(&format!("path = \"{pattern}\"\nkind = \"agents\"")),
+            "{pattern} missing from {config}"
+        );
+    }
+    let check = run(root, &["check", "--output-format", "json"], None);
+    assert_eq!(
+        check.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&check.stderr)
+    );
+    assert_eq!(value(&check), json!([]));
+}
+
+#[test]
+fn init_does_not_suggest_agent_kinds_for_excluded_or_ignored_files() {
+    let workspace = TempDir::new().unwrap();
+    let root = workspace.path();
+    std::fs::create_dir(root.join(".git")).unwrap();
+    write(root, ".gitignore", "ignored/\n");
+    write(root, "ignored/CLAUDE.md", "# Ignored instructions\n");
+    write(root, ".git/AGENTS.md", "# Git metadata\n");
+    write(root, ".seiso_cache/SKILL.md", "# Cache entry\n");
+    write(root, "nested/seiso.toml", "exclude = ['AGENTS.md']\n");
+    write(root, "nested/AGENTS.md", "# Nested but excluded\n");
+    write(root, "docs/seiso.toml", "");
+    write(
+        root,
+        "docs/.github/copilot-instructions.md",
+        "# Nested Copilot file\n",
+    );
+    assert_eq!(run(root, &["init"], None).status.code(), Some(0));
+    let config = std::fs::read_to_string(root.join("seiso.toml")).unwrap();
+    assert!(!config.contains("kind = \"agents\""), "{config}");
+}
+
+#[test]
+fn init_agent_suggestions_follow_default_check_before_generated_exclusions() {
+    let workspace = TempDir::new().unwrap();
+    let root = workspace.path();
+    std::fs::create_dir(root.join(".git")).unwrap();
+    write(root, "vendor/AGENTS.md", "# Vendor instructions\n");
+    write(root, ".github/ISSUE_TEMPLATE/SKILL.md", "# Template\n");
+    assert_eq!(run(root, &["init"], None).status.code(), Some(0));
+    let config = std::fs::read_to_string(root.join("seiso.toml")).unwrap();
+    assert!(config.contains("path = \"**/AGENTS.md\"\nkind = \"agents\""));
+    assert!(config.contains("path = \"**/SKILL.md\"\nkind = \"agents\""));
+    assert!(config.contains("\"vendor/**\""));
+    assert!(config.contains("\".github/ISSUE_TEMPLATE/**\""));
+}
+
+#[test]
+fn import_only_claude_instructions_are_accepted_as_agents_with_preview() {
+    let workspace = workspace("");
+    let root = workspace.path();
+    write(
+        root,
+        "seiso.toml",
+        "preview = true\n[[kinds]]\npath = '**/AGENTS.md'\nkind = 'agents'\n[[kinds]]\npath = '**/CLAUDE.md'\nkind = 'agents'\n",
+    );
+    write(
+        root,
+        "AGENTS.md",
+        "# Agent instructions\n\nRun the project checks.\n",
+    );
+    write(root, "CLAUDE.md", "@AGENTS.md\n");
+    let output = run(root, &["check", "--output-format", "json"], None);
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(value(&output), json!([]));
+}
+
 #[cfg(unix)]
 #[test]
 fn init_config_permissions_follow_the_process_umask() {
