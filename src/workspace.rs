@@ -10,7 +10,7 @@ use crate::config::{CliOverrides, Config, Settings, SiteMapping, Workspace};
 use crate::index::{IndexedFile, WorkspaceIndex};
 use crate::md::Document;
 use crate::paths::normalize;
-use crate::rules::{KindResolution, SuppressionRecord, resolve_kind};
+use crate::rules::{KindOutcome, SuppressionRecord, resolve_kind};
 use serde::Serialize;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -38,17 +38,70 @@ pub enum LoadScope {
     Workspace,
 }
 
-#[derive(Serialize)]
+/// The kind, scope, and rules resolved for one included document.
+#[derive(Clone, Debug)]
 pub struct FilePolicy {
     pub filename: String,
-    pub configuration: String,
-    pub kind: Option<KindResolution>,
+    pub kind: KindOutcome,
     pub domain: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub site: Option<SiteMapping>,
     pub enabled_rules: Vec<String>,
-    pub excluded: Option<&'static str>,
     pub suppressions: Vec<SuppressionRecord>,
+}
+
+impl FilePolicy {
+    pub fn resolve(
+        filename: String,
+        path: &Path,
+        document: &Document,
+        config: &Config,
+        overrides: &CliOverrides,
+    ) -> Result<Self, crate::config::ConfigError> {
+        let kind = resolve_kind(document, config.kind_for(path));
+        let enabled_rules = config
+            .enabled_rules(path, kind.value(), overrides)?
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
+        Ok(Self {
+            filename,
+            kind,
+            domain: config.domain_for(path).map(str::to_owned),
+            site: config.site_for(path).cloned(),
+            enabled_rules,
+            suppressions: Vec::new(),
+        })
+    }
+
+    /// Documents without a domain mapping share one domain.
+    pub fn domain_key(&self) -> &str {
+        self.domain.as_deref().unwrap_or("")
+    }
+}
+
+/// A discovered document that configuration leaves out of every check.
+#[derive(Clone, Debug)]
+pub struct ExcludedPolicy {
+    pub filename: String,
+    pub configuration: String,
+    pub domain: Option<String>,
+    pub site: Option<SiteMapping>,
+    /// The configuration field that leaves the document out: `include` or `exclude`.
+    pub excluded: &'static str,
+}
+
+/// One document's entry in `seiso policy`, whether included or excluded.
+#[derive(Serialize)]
+pub struct PolicyRecord<'a> {
+    filename: &'a str,
+    configuration: String,
+    kind: Option<&'a KindOutcome>,
+    domain: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    site: Option<&'a SiteMapping>,
+    enabled_rules: &'a [String],
+    excluded: Option<&'static str>,
+    suppressions: &'a [SuppressionRecord],
 }
 
 pub struct Snapshot {
@@ -56,19 +109,49 @@ pub struct Snapshot {
     pub selected: BTreeSet<String>,
     pub requested: BTreeSet<PathBuf>,
     pub configurations: BTreeMap<String, Settings>,
-    pub policies: BTreeMap<String, FilePolicy>,
+    pub excluded_policies: BTreeMap<String, ExcludedPolicy>,
     pub errors: Vec<InputError>,
     /// Requested paths, or the whole workspace, that selected no document to check.
     pub skipped: Vec<InputError>,
 }
 
 impl Snapshot {
+    /// List included and excluded documents in filename order.
+    pub fn policy_records(&self) -> Vec<PolicyRecord<'_>> {
+        let included = self.index.files().iter().map(|file| {
+            let policy = file.policy();
+            PolicyRecord {
+                filename: &policy.filename,
+                configuration: configuration_name(&self.index.root, file.config()),
+                kind: Some(&policy.kind),
+                domain: policy.domain.as_deref(),
+                site: policy.site.as_ref(),
+                enabled_rules: &policy.enabled_rules,
+                excluded: None,
+                suppressions: &policy.suppressions,
+            }
+        });
+        let excluded = self.excluded_policies.values().map(|policy| PolicyRecord {
+            filename: &policy.filename,
+            configuration: policy.configuration.clone(),
+            kind: None,
+            domain: policy.domain.as_deref(),
+            site: policy.site.as_ref(),
+            enabled_rules: &[],
+            excluded: Some(policy.excluded),
+            suppressions: &[],
+        });
+        let mut records: Vec<_> = included.chain(excluded).collect();
+        records.sort_by(|left, right| left.filename.cmp(right.filename));
+        records
+    }
+
     pub fn enabled_count(&self) -> usize {
         self.index
             .files()
             .iter()
-            .filter(|file| self.selected.contains(&file.filename))
-            .map(|file| file.enabled_rules.len())
+            .filter(|file| self.selected.contains(file.filename()))
+            .map(|file| file.policy().enabled_rules.len())
             .sum()
     }
 
@@ -83,7 +166,6 @@ struct PendingDocument {
     path: PathBuf,
     filename: String,
     config: Config,
-    configuration: String,
     source_override: Option<String>,
 }
 
@@ -144,34 +226,68 @@ pub fn load(cwd: &Path, options: &LoadOptions, scope: LoadScope) -> Result<Snaps
         Workspace::discover(cwd, options.config.as_deref()).map_err(|error| error.to_string())?;
     let root = normalize(&workspace.root);
     let mut errors = Vec::new();
+    let mut request = resolve_request(cwd, &root, options, &mut errors)?;
+    let discovery = discover(&root, request.overlay.take());
+    let mut plan = LoadPlan::resolve(
+        &workspace,
+        &root,
+        options,
+        scope,
+        &request,
+        discovery.inputs,
+        errors,
+    )?;
+    plan.select_dependencies(&request, discovery.errors);
+    let cache = ParseCache::new(root.join(".seiso_cache"), !options.no_cache);
+    let loaded = load_documents(&plan.pending, &cache);
+    plan.assemble(root, options, request, loaded)
+}
+
+struct Request {
+    paths: BTreeSet<PathBuf>,
+    all_selected: bool,
+    overlay: Option<(PathBuf, String)>,
+}
+
+impl Request {
+    fn includes(&self, path: &Path) -> bool {
+        self.all_selected || self.paths.iter().any(|selected| path.starts_with(selected))
+    }
+}
+
+fn resolve_request(
+    cwd: &Path,
+    root: &Path,
+    options: &LoadOptions,
+    errors: &mut Vec<InputError>,
+) -> Result<Request, String> {
     let mut requested = BTreeSet::new();
-    let mut inputs = BTreeMap::new();
     let overlay = if let Some((path, source)) = &options.stdin {
-        let path = workspace_path(&root, &absolute(cwd, path))?;
+        let path = workspace_path(root, &absolute(cwd, path))?;
         if !is_markdown(&path) {
             return Err("The stdin filename must have a .md or .markdown extension.".into());
         }
-        if ignored_by_git(&root, &path, false)? {
+        if ignored_by_git(root, &path, false)? {
             return Err(format!(
                 "{} is excluded by .gitignore; choose an included Markdown path.",
-                relative(&root, &path)
+                relative(root, &path)
             ));
         }
         requested.insert(path.clone());
         Some((path, source.clone()))
     } else {
         for path in &options.paths {
-            let path = workspace_path(&root, &absolute(cwd, path))?;
+            let path = workspace_path(root, &absolute(cwd, path))?;
             match path.try_exists() {
                 Ok(true) => {
                     requested.insert(path);
                 }
                 Ok(false) => errors.push(InputError {
-                    filename: relative(&root, &path),
+                    filename: relative(root, &path),
                     message: "Path does not exist; provide an existing file or directory.".into(),
                 }),
                 Err(error) => errors.push(InputError {
-                    filename: relative(&root, &path),
+                    filename: relative(root, &path),
                     message: format!("Cannot access this path: {error}"),
                 }),
             }
@@ -179,10 +295,22 @@ pub fn load(cwd: &Path, options: &LoadOptions, scope: LoadScope) -> Result<Snaps
         None
     };
     let all_selected = options.paths.is_empty() && options.stdin.is_none();
-    let selected_path =
-        |path: &Path| all_selected || requested.iter().any(|selected| path.starts_with(selected));
+    Ok(Request {
+        paths: requested,
+        all_selected,
+        overlay,
+    })
+}
+
+struct Discovery {
+    inputs: BTreeMap<PathBuf, Option<String>>,
+    errors: Vec<(Option<PathBuf>, InputError)>,
+}
+
+fn discover(root: &Path, overlay: Option<(PathBuf, String)>) -> Discovery {
+    let mut inputs = BTreeMap::new();
     let mut discovery_errors = Vec::new();
-    let walker = ignore::WalkBuilder::new(&root)
+    let walker = ignore::WalkBuilder::new(root)
         .hidden(false)
         .follow_links(false)
         .git_ignore(true)
@@ -201,7 +329,7 @@ pub fn load(cwd: &Path, options: &LoadOptions, scope: LoadScope) -> Result<Snaps
                     discovery_errors.push((
                         Some(path.clone()),
                         InputError {
-                            filename: relative(&root, &path),
+                            filename: relative(root, &path),
                             message: format!("Cannot fully apply ignore rules: {error}"),
                         },
                     ));
@@ -222,190 +350,219 @@ pub fn load(cwd: &Path, options: &LoadOptions, scope: LoadScope) -> Result<Snaps
     if let Some((path, source)) = overlay {
         inputs.insert(path, Some(source));
     }
-    let mut configurations = BTreeMap::new();
-    record_configuration(
-        &mut configurations,
-        &root,
-        &workspace.config,
-        &options.overrides,
-    );
-    let mut policies = BTreeMap::new();
-    let mut config_cache = BTreeMap::new();
-    let mut pending = Vec::new();
-    let mut deferred_errors = Vec::new();
-    let mut excluded_inputs = Vec::new();
-    let mut needs_index = scope == LoadScope::Workspace;
-    for (path, source_override) in inputs {
-        let selected = selected_path(&path);
-        if scope == LoadScope::Selected && !selected {
-            continue;
-        }
-        let filename = relative(&root, &path);
-        let directory = path.parent().unwrap_or(&root).to_path_buf();
-        let config = match config_cache.entry(directory).or_insert_with(|| {
-            workspace
-                .config_for(&path)
-                .map_err(|error| error.to_string())
-        }) {
-            Ok(config) => config.clone(),
-            Err(error) => {
-                let error = InputError {
-                    filename,
-                    message: error.clone(),
-                };
-                if selected || scope == LoadScope::Workspace {
-                    errors.push(error);
-                } else {
-                    deferred_errors.push(error);
+    Discovery {
+        inputs,
+        errors: discovery_errors,
+    }
+}
+
+struct LoadPlan {
+    pending: Vec<PendingDocument>,
+    configurations: BTreeMap<String, Settings>,
+    excluded_policies: BTreeMap<String, ExcludedPolicy>,
+    errors: Vec<InputError>,
+    deferred_errors: Vec<InputError>,
+    excluded_inputs: Vec<(PathBuf, &'static str, String)>,
+    needs_index: bool,
+}
+
+impl LoadPlan {
+    fn resolve(
+        workspace: &Workspace,
+        root: &Path,
+        options: &LoadOptions,
+        scope: LoadScope,
+        request: &Request,
+        inputs: BTreeMap<PathBuf, Option<String>>,
+        mut errors: Vec<InputError>,
+    ) -> Result<Self, String> {
+        let mut configurations = BTreeMap::new();
+        record_configuration(
+            &mut configurations,
+            root,
+            &workspace.config,
+            &options.overrides,
+        );
+        let mut excluded_policies = BTreeMap::new();
+        let mut config_cache = BTreeMap::new();
+        let mut pending = Vec::new();
+        let mut deferred_errors = Vec::new();
+        let mut excluded_inputs = Vec::new();
+        let mut needs_index = scope == LoadScope::Workspace;
+        for (path, source_override) in inputs {
+            let selected = request.includes(&path);
+            if scope == LoadScope::Selected && !selected {
+                continue;
+            }
+            let filename = relative(root, &path);
+            let directory = path.parent().unwrap_or(root).to_path_buf();
+            let config = match config_cache.entry(directory).or_insert_with(|| {
+                workspace
+                    .config_for(&path)
+                    .map_err(|error| error.to_string())
+            }) {
+                Ok(config) => config.clone(),
+                Err(error) => {
+                    let error = InputError {
+                        filename,
+                        message: error.clone(),
+                    };
+                    if selected || scope == LoadScope::Workspace {
+                        errors.push(error);
+                    } else {
+                        deferred_errors.push(error);
+                    }
+                    continue;
+                }
+            };
+            let configuration =
+                record_configuration(&mut configurations, root, &config, &options.overrides);
+            let excluded = if !config.includes(&path) {
+                Some("include")
+            } else if config.excludes(&path) {
+                Some("exclude")
+            } else {
+                None
+            };
+            if let Some(field) = excluded {
+                if selected {
+                    excluded_inputs.push((path.clone(), field, configuration.clone()));
+                }
+                if source_override.is_some() {
+                    errors.push(InputError {
+                        filename: filename.clone(),
+                        message: "The stdin filename is excluded by configuration; choose an included Markdown path.".into(),
+                    });
+                }
+                if scope == LoadScope::Workspace {
+                    excluded_policies.insert(
+                        filename.clone(),
+                        ExcludedPolicy {
+                            filename,
+                            configuration,
+                            domain: config.domain_for(&path).map(str::to_owned),
+                            site: config.site_for(&path).cloned(),
+                            excluded: field,
+                        },
+                    );
                 }
                 continue;
             }
-        };
-        let configuration =
-            record_configuration(&mut configurations, &root, &config, &options.overrides);
-        let excluded = if !config.includes(&path) {
-            Some("include")
-        } else if config.excludes(&path) {
-            Some("exclude")
-        } else {
-            None
-        };
-        if let Some(field) = excluded {
-            if selected {
-                excluded_inputs.push((path.clone(), field, configuration.clone()));
-            }
-            if source_override.is_some() {
-                errors.push(InputError {filename:filename.clone(),message:"The stdin filename is excluded by configuration; choose an included Markdown path.".into()});
-            }
-            if scope == LoadScope::Workspace {
-                policies.insert(
-                    filename.clone(),
-                    FilePolicy {
-                        filename,
-                        configuration,
-                        kind: None,
-                        domain: config.domain_for(&path).map(str::to_owned),
-                        site: config.site_for(&path).cloned(),
-                        enabled_rules: Vec::new(),
-                        excluded,
-                        suppressions: Vec::new(),
-                    },
-                );
-            }
-            continue;
+            needs_index |= requires_index(scope, &config, &path, &options.overrides)?;
+            pending.push(PendingDocument {
+                path,
+                filename,
+                config,
+                source_override,
+            });
         }
-        if scope == LoadScope::Check
-            && config
-                .selected_rules(&path, &options.overrides)
-                .map_err(|error| error.to_string())?
-                .iter()
-                .any(|code| crate::rules::rule(code).is_some_and(|rule| rule.requires_index))
-        {
-            needs_index = true;
+        Ok(Self {
+            pending,
+            configurations,
+            excluded_policies,
+            errors,
+            deferred_errors,
+            excluded_inputs,
+            needs_index,
+        })
+    }
+
+    fn select_dependencies(
+        &mut self,
+        request: &Request,
+        discovery_errors: Vec<(Option<PathBuf>, InputError)>,
+    ) {
+        if self.needs_index {
+            self.errors.append(&mut self.deferred_errors);
         }
-        pending.push(PendingDocument {
-            path,
-            filename,
-            config,
-            configuration,
-            source_override,
-        });
-    }
-    if needs_index {
-        errors.extend(deferred_errors);
-    }
-    errors.extend(
-        discovery_errors
-            .into_iter()
-            .filter(|(path, _)| {
-                needs_index
-                    || all_selected
-                    || path.as_ref().is_none_or(|path| {
-                        requested.iter().any(|selected| {
-                            path.starts_with(selected) || selected.starts_with(path)
+        self.errors.extend(
+            discovery_errors
+                .into_iter()
+                .filter(|(path, _)| {
+                    self.needs_index
+                        || request.all_selected
+                        || path.as_ref().is_none_or(|path| {
+                            request.paths.iter().any(|selected| {
+                                path.starts_with(selected) || selected.starts_with(path)
+                            })
                         })
-                    })
-            })
-            .map(|(_, error)| error),
-    );
-    pending.retain(|input| needs_index || selected_path(&input.path));
-    let cache = ParseCache::new(root.join(".seiso_cache"), !options.no_cache);
-    let loaded = load_documents(&pending, &cache);
-    let mut files = Vec::new();
-    let mut selected = BTreeSet::new();
-    for (input, loaded) in pending.into_iter().zip(loaded) {
-        let PendingDocument {
-            path,
-            filename,
-            config,
-            configuration,
-            ..
-        } = input;
-        let document = match loaded {
-            Ok(document) => document,
-            Err(message) => {
-                errors.push(InputError { filename, message });
-                continue;
-            }
-        };
-        let kind = resolve_kind(&document, config.kind_for(&path));
-        let enabled_rules = config
-            .enabled_rules(&path, kind.value.as_deref(), &options.overrides)
-            .map_err(|error| error.to_string())?
-            .into_iter()
-            .map(str::to_owned)
-            .collect::<Vec<_>>();
-        if selected_path(&path) {
-            selected.insert(filename.clone());
-        }
-        policies.insert(
-            filename.clone(),
-            FilePolicy {
-                filename: filename.clone(),
-                configuration,
-                kind: Some(kind.clone()),
-                domain: config.domain_for(&path).map(str::to_owned),
-                site: config.site_for(&path).cloned(),
-                enabled_rules: enabled_rules.clone(),
-                excluded: None,
-                suppressions: Vec::new(),
-            },
+                })
+                .map(|(_, error)| error),
         );
-        files.push(IndexedFile {
-            filename,
-            path: path.clone(),
-            document,
-            kind: kind.value,
-            domain: config.domain_for(&path).unwrap_or("").to_owned(),
-            enabled_rules,
-            config,
-        });
+        self.pending
+            .retain(|input| self.needs_index || request.includes(&input.path));
     }
-    let checked: Vec<_> = files
-        .iter()
-        .filter(|file| selected.contains(&file.filename))
-        .map(|file| file.path.as_path())
-        .collect();
-    let skipped = skipped_inputs(
-        &root,
-        &requested,
-        all_selected,
-        &checked,
-        &excluded_inputs,
-        &errors,
-    );
-    let index = WorkspaceIndex::new(root, files, errors.is_empty());
-    let mut snapshot = Snapshot {
-        index,
-        selected,
-        requested,
-        configurations,
-        policies,
-        errors,
-        skipped,
-    };
-    snapshot.sort_errors();
-    Ok(snapshot)
+
+    fn assemble(
+        mut self,
+        root: PathBuf,
+        options: &LoadOptions,
+        request: Request,
+        loaded: Vec<Result<Arc<Document>, String>>,
+    ) -> Result<Snapshot, String> {
+        let mut files = Vec::new();
+        let mut selected = BTreeSet::new();
+        for (input, loaded) in self.pending.into_iter().zip(loaded) {
+            let PendingDocument {
+                path,
+                filename,
+                config,
+                ..
+            } = input;
+            let document = match loaded {
+                Ok(document) => document,
+                Err(message) => {
+                    self.errors.push(InputError { filename, message });
+                    continue;
+                }
+            };
+            let file = IndexedFile::new(filename, path, document, config, &options.overrides)
+                .map_err(|error| error.to_string())?;
+            if request.includes(file.path()) {
+                selected.insert(file.filename().to_owned());
+            }
+            files.push(file);
+        }
+        let checked: Vec<_> = files
+            .iter()
+            .filter(|file| selected.contains(file.filename()))
+            .map(IndexedFile::path)
+            .collect();
+        let skipped = skipped_inputs(
+            &root,
+            &request.paths,
+            request.all_selected,
+            &checked,
+            &self.excluded_inputs,
+            &self.errors,
+        );
+        let index = WorkspaceIndex::new(root, files, self.errors.is_empty());
+        let mut snapshot = Snapshot {
+            index,
+            selected,
+            requested: request.paths,
+            configurations: self.configurations,
+            excluded_policies: self.excluded_policies,
+            errors: self.errors,
+            skipped,
+        };
+        snapshot.sort_errors();
+        Ok(snapshot)
+    }
+}
+
+fn requires_index(
+    scope: LoadScope,
+    config: &Config,
+    path: &Path,
+    overrides: &CliOverrides,
+) -> Result<bool, String> {
+    Ok(scope == LoadScope::Check
+        && config
+            .selected_rules(path, overrides)
+            .map_err(|error| error.to_string())?
+            .iter()
+            .any(|code| crate::rules::rule(code).is_some_and(|rule| rule.requires_index)))
 }
 
 /// Explain each requested path, or an empty workspace, that selected no document.
@@ -519,11 +676,7 @@ fn record_configuration(
     config: &Config,
     overrides: &CliOverrides,
 ) -> String {
-    let name = config
-        .source
-        .as_ref()
-        .map(|path| relative(root, path))
-        .unwrap_or_else(|| "<defaults>".into());
+    let name = configuration_name(root, config);
     configurations.entry(name.clone()).or_insert_with(|| {
         let mut settings = config.settings.clone();
         settings.preview |= overrides.preview;
@@ -534,6 +687,16 @@ fn record_configuration(
         settings
     });
     name
+}
+
+/// Name a configuration by its workspace-relative path, as `seiso policy` reports it.
+pub fn configuration_name(root: &Path, config: &Config) -> String {
+    configuration_source(root, config).unwrap_or_else(|| "<defaults>".into())
+}
+
+/// Locate a configuration file relative to the workspace root; defaults have none.
+pub fn configuration_source(root: &Path, config: &Config) -> Option<String> {
+    config.source.as_ref().map(|path| relative(root, path))
 }
 
 pub fn absolute(cwd: &Path, path: &Path) -> PathBuf {

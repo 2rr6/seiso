@@ -1,10 +1,9 @@
 //! Run enabled rules against a loaded snapshot and select the reported diagnostics.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
-use crate::config::CliOverrides;
 use crate::diagnostics::{Diagnostic, sorted_diagnostics};
-use crate::rules::{self, CheckContext, RawCheckResult};
+use crate::rules::{self, CheckContext, Kind, RawCheckResult};
 use crate::workspace::{InputError, Snapshot};
 
 pub struct Analysis {
@@ -41,27 +40,35 @@ impl Analysis {
                 .files()
                 .iter()
                 .zip(other.snapshot.index.files())
-                .all(|(a, b)| a.filename == b.filename && a.document.source == b.document.source)
+                .all(|(a, b)| {
+                    a.filename() == b.filename() && a.document().source == b.document().source
+                })
     }
 }
 
 /// Inspect declarations without claiming that their rules have executed.
 pub fn inspect_policy(snapshot: &mut Snapshot) {
-    for file in snapshot.index.files() {
-        if file.kind.as_deref() == Some("generated") {
-            continue;
-        }
-        let enabled = file.enabled_rules.iter().cloned().collect();
-        if let Some(policy) = snapshot.policies.get_mut(&file.filename) {
-            policy.suppressions = rules::suppression::inspect(&file.document, &enabled);
-        }
-    }
+    let records = snapshot
+        .index
+        .files()
+        .iter()
+        .filter(|file| file.policy().kind.value() != Some(Kind::Generated))
+        .map(|file| {
+            let enabled = file.policy().enabled_rules.iter().cloned().collect();
+            (
+                file.filename().to_owned(),
+                rules::suppression::inspect(file.document(), &enabled),
+            )
+        })
+        .collect();
+    snapshot.index.set_suppressions(records);
 }
 
-pub fn check(mut snapshot: Snapshot, overrides: &CliOverrides) -> Result<Analysis, String> {
+pub fn check(mut snapshot: Snapshot) -> Analysis {
     let index = &snapshot.index;
     let mut cross = if index.files().iter().any(|file| {
-        file.enabled_rules
+        file.policy()
+            .enabled_rules
             .iter()
             .any(|code| rules::rule(code).is_some_and(|rule| rule.requires_index))
     }) {
@@ -83,49 +90,32 @@ pub fn check(mut snapshot: Snapshot, overrides: &CliOverrides) -> Result<Analysi
             .push(diagnostic);
     }
     let mut diagnostics = Vec::new();
+    let mut suppressions = BTreeMap::new();
     for file in index.files() {
-        let selected = snapshot.selected.contains(&file.filename);
-        if !selected && !cross_by_file.contains_key(&file.filename) {
+        let filename = file.filename();
+        let selected = snapshot.selected.contains(filename);
+        if !selected && !cross_by_file.contains_key(filename) {
             continue;
         }
         let mut raw = if selected {
-            rules::check_raw_with_files(
-                &CheckContext {
-                    document: &file.document,
-                    filename: &file.filename,
-                    path: &file.path,
-                    workspace_root: &index.root,
-                    config: &file.config,
-                    overrides,
-                },
-                index,
-            )
-            .map_err(|error| error.to_string())?
+            rules::check(&CheckContext::indexed(file, &index.root), index)
         } else {
-            RawCheckResult {
-                kind: rules::resolve_kind(&file.document, file.config.kind_for(&file.path)),
-                enabled_rules: BTreeSet::new(),
-                diagnostics: Vec::new(),
-                errors: Vec::new(),
-                incomplete_rules: rules::single_file_rules()
-                    .map(|rule| rule.code.to_owned())
-                    .collect(),
-            }
+            RawCheckResult::unchecked(file.policy())
         };
-        raw.enabled_rules = file.enabled_rules.iter().cloned().collect();
-        raw.diagnostics
-            .extend(cross_by_file.remove(&file.filename).unwrap_or_default());
-        raw.incomplete_rules
-            .extend(cross.incomplete.remove(&file.filename).unwrap_or_default());
+        raw.add_cross_file(
+            file.policy(),
+            cross_by_file.remove(filename).unwrap_or_default(),
+            cross.incomplete.remove(filename).unwrap_or_default(),
+        );
         if !index.complete {
             raw.incomplete_rules
                 .extend(rules::cross_file_rules().map(|rule| rule.code.to_owned()));
         }
-        let result = rules::finish_check(&file.document, &file.filename, raw);
+        let result = raw.finish(file.document(), filename);
         snapshot
             .errors
             .extend(result.errors.into_iter().map(|message| InputError {
-                filename: file.filename.clone(),
+                filename: filename.to_owned(),
                 message,
             }));
         diagnostics.extend(result.diagnostics.into_iter().filter(|diagnostic| {
@@ -139,13 +129,12 @@ pub fn check(mut snapshot: Snapshot, overrides: &CliOverrides) -> Result<Analysi
                                 }))
                     }))
         }));
-        if let Some(policy) = snapshot.policies.get_mut(&file.filename) {
-            policy.suppressions = result.suppressions;
-        }
+        suppressions.insert(filename.to_owned(), result.suppressions);
     }
+    snapshot.index.set_suppressions(suppressions);
     snapshot.sort_errors();
-    Ok(Analysis {
+    Analysis {
         snapshot,
         diagnostics: sorted_diagnostics(&diagnostics),
-    })
+    }
 }

@@ -2,27 +2,93 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, LazyLock, OnceLock};
 
 use crate::config::Config;
 use crate::diagnostics::Span;
 use crate::md::{BlockKind, Document, FragmentKind};
 use crate::paths::{
-    LinkPathError, Listings, TargetStatus, local_link, local_target_status, select_target,
+    LinkPathError, Listings, TargetPreference, TargetStatus, local_link, local_target_status,
+    select_target,
 };
-use crate::rules::{PathStatus, WorkspaceFiles};
+use crate::rules::WorkspaceFiles;
+use crate::workspace::FilePolicy;
 use regex::Regex;
 use serde::Serialize;
 
+static STRIP: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r"[[\p{No}\p{Pe}\p{Pf}\p{Pi}\p{Ps}\p{Po}\p{Pd}\p{S}\p{C}\p{Z}]--[\p{Alphabetic} \-]]",
+    )
+    .expect("valid slug category expression")
+});
+static ATX_CLOSING: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[ \t]+#+$").unwrap());
+static SETEXT_UNDERLINE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[ \t]*(?:=+|-+)$").unwrap());
+static TRAILING_ATTRIBUTE_LIST: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?:^|[^\\])\{:?[^{}]*\}$").unwrap());
+static HEADING_ATTRIBUTES: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\s*\{:?\s*([^{}]*)\}\s*$").unwrap());
+static TAG: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"(?is)<([a-z][a-z0-9:-]*)\b(?:[^<>"']|"[^"]*"|'[^']*')*>"#).unwrap()
+});
+static ATTRIBUTE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"(?is)\s+([^\s"'=<>`/]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?"#)
+        .unwrap()
+});
+static ENTITY: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"&(#(?:x|X)[0-9a-fA-F]+|#[0-9]+|[a-zA-Z][a-zA-Z0-9]+);").unwrap());
+
+/// A document with the policy resolved from its path, source, and configuration.
+/// Fields are read-only so the policy cannot drift from the inputs it describes.
 #[derive(Clone, Debug)]
 pub struct IndexedFile {
-    pub filename: String,
-    pub path: PathBuf,
-    pub document: Arc<Document>,
-    pub kind: Option<String>,
-    pub domain: String,
-    pub enabled_rules: Vec<String>,
-    pub config: Config,
+    policy: FilePolicy,
+    path: PathBuf,
+    document: Arc<Document>,
+    config: Config,
+}
+
+impl IndexedFile {
+    pub fn new(
+        filename: String,
+        path: PathBuf,
+        document: Arc<Document>,
+        config: Config,
+        overrides: &crate::config::CliOverrides,
+    ) -> Result<Self, crate::config::ConfigError> {
+        let policy = FilePolicy::resolve(filename, &path, &document, &config, overrides)?;
+        Ok(Self {
+            policy,
+            path,
+            document,
+            config,
+        })
+    }
+
+    pub fn filename(&self) -> &str {
+        &self.policy.filename
+    }
+
+    pub fn policy(&self) -> &FilePolicy {
+        &self.policy
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    pub fn document(&self) -> &Arc<Document> {
+        &self.document
+    }
+
+    pub fn config(&self) -> &Config {
+        &self.config
+    }
+
+    pub fn into_document(self) -> Arc<Document> {
+        self.document
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -79,10 +145,10 @@ pub struct LinkResolution {
 impl WorkspaceIndex {
     /// Sort workspace files and defer anchor extraction until a lookup needs it.
     pub fn new(root: PathBuf, mut files: Vec<IndexedFile>, complete: bool) -> Self {
-        files.sort_by(|left, right| left.filename.cmp(&right.filename));
+        files.sort_by(|left, right| left.filename().cmp(right.filename()));
         let anchors = files
             .iter()
-            .map(|file| (file.filename.clone(), OnceLock::new()))
+            .map(|file| (file.filename().to_owned(), OnceLock::new()))
             .collect();
         Self {
             root,
@@ -100,6 +166,20 @@ impl WorkspaceIndex {
         self
     }
 
+    pub(crate) fn set_suppressions(
+        &mut self,
+        records: BTreeMap<String, Vec<crate::rules::SuppressionRecord>>,
+    ) {
+        for (filename, suppressions) in records {
+            if let Ok(index) = self
+                .files
+                .binary_search_by(|file| file.filename().cmp(&filename))
+            {
+                self.files[index].policy.suppressions = suppressions;
+            }
+        }
+    }
+
     /// Borrow files in filename order without invalidating lookups or cached anchors.
     /// To change the file set or its documents, construct a new index.
     pub fn files(&self) -> &[IndexedFile] {
@@ -115,7 +195,7 @@ impl WorkspaceIndex {
     /// Look up an indexed file by its workspace-relative filename.
     pub fn file(&self, filename: &str) -> Option<&IndexedFile> {
         self.files
-            .binary_search_by(|file| file.filename.as_str().cmp(filename))
+            .binary_search_by(|file| file.filename().cmp(filename))
             .ok()
             .map(|index| &self.files[index])
     }
@@ -149,9 +229,12 @@ impl WorkspaceIndex {
             status: LinkStatus::AnchorUnknown,
             error: None,
         };
-        let site = self
-            .file(source)
-            .and_then(|file| file.config.site_routes(&file.path));
+        let site = self.file(source).and_then(|file| {
+            file.policy
+                .site
+                .as_ref()
+                .map(|site| file.config.site_routes(site))
+        });
         let link = match local_link(&self.root, Path::new(source), destination, site.as_ref()) {
             Ok(link) => link,
             Err(error) => {
@@ -164,9 +247,12 @@ impl WorkspaceIndex {
                 return result;
             }
         };
-        let (location, status) = select_target(&self.root, &link.locations, |location| {
-            self.target_status(&location.path, &location.target)
-        });
+        let (location, status) = select_target(
+            &self.root,
+            &link.locations,
+            TargetPreference::Page,
+            |location| self.target_status(&location.path, &location.target),
+        );
         let mut target = location.target.clone();
         result.target = Some(target.clone());
         result.anchor = link.anchor;
@@ -266,19 +352,19 @@ impl WorkspaceIndex {
             let links: Vec<_> = file.document.links.iter().map(|link| serde_json::json!({
                 "raw": link.destination,
                 "span": link.span,
-                "resolution": self.resolve_link(&file.filename, &link.destination),
+                "resolution": self.resolve_link(file.filename(), &link.destination),
             })).collect();
             let mut record = serde_json::json!({
-                "filename": file.filename,
-                "kind": file.kind,
-                "domain": file.domain,
+                "filename": file.filename(),
+                "kind": file.policy.kind.value(),
+                "domain": file.policy.domain_key(),
                 "language": file.document.language,
                 "canonical": file.document.frontmatter.as_ref().filter(|value| value.errors.is_empty()).and_then(|value| value.canonical).unwrap_or(false),
-                "anchors": self.anchor_index(&file.filename).unwrap().spans,
+                "anchors": self.anchor_index(file.filename()).unwrap().spans,
                 "identifiers": file.document.identifiers,
                 "links": links,
             });
-            if let Some(site) = file.config.site_for(&file.path) {
+            if let Some(site) = &file.policy.site {
                 record["site"] = serde_json::json!(site);
             }
             record
@@ -289,14 +375,7 @@ impl WorkspaceIndex {
 
 /// Unicode category filtering follows github-slugger's documented generation rules.
 pub fn github_slug(heading: &str) -> String {
-    static STRIP: OnceLock<Regex> = OnceLock::new();
-    let strip = STRIP.get_or_init(|| {
-        Regex::new(
-            r"[[\p{No}\p{Pe}\p{Pf}\p{Pi}\p{Ps}\p{Po}\p{Pd}\p{S}\p{C}\p{Z}]--[\p{Alphabetic} \-]]",
-        )
-        .expect("valid slug category expression")
-    });
-    strip
+    STRIP
         .replace_all(&heading.to_lowercase(), "")
         .replace(' ', "-")
 }
@@ -305,26 +384,23 @@ pub fn github_slug(heading: &str) -> String {
 /// span, and not opened by an escaped brace, which attribute-list syntax keeps
 /// as text.
 fn source_ends_with_attribute_list(source: &str) -> bool {
-    static ATX_CLOSING: OnceLock<Regex> = OnceLock::new();
-    static SETEXT_UNDERLINE: OnceLock<Regex> = OnceLock::new();
-    static LIST: OnceLock<Regex> = OnceLock::new();
     let mut lines: Vec<&str> = source
         .lines()
         .map(str::trim_end)
         .filter(|line| !line.is_empty())
         .collect();
-    let underline = SETEXT_UNDERLINE.get_or_init(|| Regex::new(r"^[ \t]*(?:=+|-+)$").unwrap());
-    if lines.len() > 1 && lines.last().is_some_and(|line| underline.is_match(line)) {
+    if lines.len() > 1
+        && lines
+            .last()
+            .is_some_and(|line| SETEXT_UNDERLINE.is_match(line))
+    {
         lines.pop();
     }
     let Some(line) = lines.last() else {
         return false;
     };
-    let line = ATX_CLOSING
-        .get_or_init(|| Regex::new(r"[ \t]+#+$").unwrap())
-        .replace(line, "");
-    LIST.get_or_init(|| Regex::new(r"(?:^|[^\\])\{:?[^{}]*\}$").unwrap())
-        .is_match(&line)
+    let line = ATX_CLOSING.replace(line, "");
+    TRAILING_ATTRIBUTE_LIST.is_match(&line)
 }
 
 /// Extract heading slugs and explicit HTML anchors with their original spans.
@@ -333,9 +409,6 @@ fn document_anchors(document: &Document) -> BTreeMap<String, Span> {
     let mut seen = BTreeSet::new();
     // Site generators read a trailing attribute list such as `{#id}` or
     // `{: #id .class}` as the heading's id and omit it from the visible text.
-    static HEADING_ATTRIBUTES: OnceLock<Regex> = OnceLock::new();
-    let heading_attributes =
-        HEADING_ATTRIBUTES.get_or_init(|| Regex::new(r"\s*\{:?\s*([^{}]*)\}\s*$").unwrap());
     for block in document
         .blocks
         .iter()
@@ -355,7 +428,7 @@ fn document_anchors(document: &Document) -> BTreeMap<String, Span> {
         anchors.entry(slug).or_insert(block.span);
         // The flattened text has lost code delimiters and escapes, so confirm
         // the list in the heading's source before trusting it.
-        if let Some(attributes) = heading_attributes.captures(text)
+        if let Some(attributes) = HEADING_ATTRIBUTES.captures(text)
             && source_ends_with_attribute_list(&document.source[block.span.start..block.span.end])
         {
             let visible = &text[..attributes.get(0).unwrap().start()];
@@ -369,15 +442,6 @@ fn document_anchors(document: &Document) -> BTreeMap<String, Span> {
             }
         }
     }
-    static TAG: OnceLock<Regex> = OnceLock::new();
-    static ATTRIBUTE: OnceLock<Regex> = OnceLock::new();
-    let tag = TAG.get_or_init(|| {
-        Regex::new(r#"(?is)<([a-z][a-z0-9:-]*)\b(?:[^<>"']|"[^"]*"|'[^']*')*>"#).unwrap()
-    });
-    let attribute = ATTRIBUTE.get_or_init(|| {
-        Regex::new(r#"(?is)\s+([^\s"'=<>`/]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?"#)
-            .unwrap()
-    });
     let mut ignored: Vec<Span> = document
         .blocks
         .iter()
@@ -400,7 +464,7 @@ fn document_anchors(document: &Document) -> BTreeMap<String, Span> {
             .map(|fragment| fragment.span),
     );
     let mut raw_text_end = 0;
-    for capture in tag.captures_iter(&document.source) {
+    for capture in TAG.captures_iter(&document.source) {
         let matched = capture.get(0).unwrap();
         let inside_html = document.blocks.iter().any(|block| {
             block.kind == BlockKind::Html
@@ -440,7 +504,7 @@ fn document_anchors(document: &Document) -> BTreeMap<String, Span> {
                 .find(&format!("</{element}"))
                 .map_or(document.source.len(), |offset| matched.end() + offset);
         }
-        for attr in attribute.captures_iter(matched.as_str()) {
+        for attr in ATTRIBUTE.captures_iter(matched.as_str()) {
             if !(attr[1].eq_ignore_ascii_case("id")
                 || attr[1].eq_ignore_ascii_case("name") && capture[1].eq_ignore_ascii_case("a"))
             {
@@ -458,11 +522,7 @@ fn document_anchors(document: &Document) -> BTreeMap<String, Span> {
 }
 
 fn decode_html(value: &str) -> String {
-    static ENTITY: OnceLock<Regex> = OnceLock::new();
     ENTITY
-        .get_or_init(|| {
-            Regex::new(r"&(#(?:x|X)[0-9a-fA-F]+|#[0-9]+|[a-zA-Z][a-zA-Z0-9]+);").unwrap()
-        })
         .replace_all(value, |capture: &regex::Captures<'_>| {
             let entity = &capture[1];
             if let Some(number) = entity
@@ -519,12 +579,11 @@ fn decode_numeric(number: &str, radix: u32) -> String {
 }
 
 impl WorkspaceFiles for WorkspaceIndex {
-    fn status(&self, _workspace_root: &Path, target: &Path) -> PathStatus {
+    fn status(&self, _workspace_root: &Path, target: &Path) -> TargetStatus {
         let Ok(relative) = target.strip_prefix(&self.root) else {
-            return PathStatus::Unknown;
+            return TargetStatus::OutsideWorkspace;
         };
         self.target_status(target, &relative.to_string_lossy().replace('\\', "/"))
-            .into()
     }
 }
 
@@ -533,15 +592,18 @@ mod tests {
     use super::*;
 
     fn file(root: &Path, filename: &str, source: &str) -> IndexedFile {
-        IndexedFile {
-            filename: filename.into(),
-            path: root.join(filename),
-            document: crate::md::parse(source).unwrap().into(),
-            kind: Some("reference".into()),
-            domain: String::new(),
-            enabled_rules: Vec::new(),
-            config: Config::defaults(root).unwrap(),
-        }
+        IndexedFile::new(
+            filename.into(),
+            root.join(filename),
+            crate::md::parse(source).unwrap().into(),
+            Config::parse("[[kinds]]\npath='**/*.md'\nkind='reference'", root).unwrap(),
+            &crate::config::CliOverrides::default(),
+        )
+        .unwrap()
+    }
+
+    fn single_document(root: &Path, source: &str) -> WorkspaceIndex {
+        WorkspaceIndex::new(root.to_path_buf(), vec![file(root, "a.md", source)], true)
     }
 
     /// Owned files can be changed only after consuming and rebuilding the index.
@@ -556,15 +618,15 @@ mod tests {
             ],
             true,
         );
-        assert_eq!(index.files()[0].filename, "a.md");
+        assert_eq!(index.files()[0].filename(), "a.md");
         assert!(index.anchors("a.md").unwrap().contains("before"));
-        let original_document = Arc::clone(&index.files()[1].document);
+        let original_document = Arc::clone(index.files()[1].document());
 
         let mut files = index.into_files();
-        assert!(Arc::ptr_eq(&original_document, &files[1].document));
+        assert!(Arc::ptr_eq(&original_document, files[1].document()));
         files[0] = file(root.path(), "renamed.md", "# After\n");
         let rebuilt = WorkspaceIndex::new(root.path().to_path_buf(), files, true);
-        assert_eq!(rebuilt.files()[0].filename, "b.md");
+        assert_eq!(rebuilt.files()[0].filename(), "b.md");
         assert!(rebuilt.file("a.md").is_none());
         assert!(rebuilt.anchors("a.md").is_none());
         assert!(rebuilt.file("renamed.md").is_some());
@@ -630,11 +692,7 @@ mod tests {
     fn github_anchors_cover_rendered_text_cjk_unicode_and_collision_suffixes() {
         let root = tempfile::tempdir().unwrap();
         let source = "# Hello, *world*!\n# Hello world\n# Hello world-1\n# Hello world\n# 安装：配置！\n# 日本語・ガイド\n# Déjà vu 🦀\n# A <em>formatted</em> `value`\n# Hello!  World\n# First. *Next*\n";
-        let index = WorkspaceIndex::new(
-            root.path().to_path_buf(),
-            vec![file(root.path(), "a.md", source)],
-            true,
-        );
+        let index = single_document(root.path(), source);
         let anchors = index.anchors("a.md").unwrap();
         for expected in [
             "hello-world",
@@ -661,11 +719,7 @@ mod tests {
     fn heading_attribute_lists_add_declared_ids_and_the_visible_slug() {
         let root = tempfile::tempdir().unwrap();
         let source = "# Array some {#array-some}\n## 安装 { #install .note }\n## Options {: #opts }\n## Classes only {.wide}\n## Template {name}\n# Empty {#}\n";
-        let index = WorkspaceIndex::new(
-            root.path().to_path_buf(),
-            vec![file(root.path(), "a.md", source)],
-            true,
-        );
+        let index = single_document(root.path(), source);
         let anchors = index.anchors("a.md").unwrap();
         for expected in [
             "array-some",
@@ -694,11 +748,7 @@ mod tests {
     fn heading_attribute_lists_in_code_or_after_an_escape_are_text() {
         let root = tempfile::tempdir().unwrap();
         let source = "# Example `{#ghost}`\n\n# Escaped \\{#escaped}\n\n# Closed {#closed} ##\n\nSetext {#setext}\n===\n";
-        let index = WorkspaceIndex::new(
-            root.path().to_path_buf(),
-            vec![file(root.path(), "a.md", source)],
-            true,
-        );
+        let index = single_document(root.path(), source);
         let anchors = index.anchors("a.md").unwrap();
         for expected in ["example-ghost", "escaped-escaped", "closed", "setext"] {
             assert!(
@@ -718,11 +768,7 @@ mod tests {
     fn html_ids_and_names_exclude_comments_code_frontmatter_and_escaped_tags() {
         let root = tempfile::tempdir().unwrap();
         let source = "---\nnote: '<a id=frontmatter>'\n---\n# Title\n\n<a name='old'></a> <span ID=custom></span> <a id=two&amp;three></a>\n\n<div id=block></div>\n\n`<a id=inline>`\n\n```html\n<a id=fenced>\n```\n\n<!-- <a id=comment> -->\n\n\\<a id=escaped>\n\n<span name=not-an-anchor></span>\n\n<span title='the id=quoted'></span>\n";
-        let index = WorkspaceIndex::new(
-            root.path().to_path_buf(),
-            vec![file(root.path(), "a.md", source)],
-            true,
-        );
+        let index = single_document(root.path(), source);
         let anchors = index.anchors("a.md").unwrap();
         for expected in ["title", "old", "custom", "two&three", "block"] {
             assert!(anchors.contains(expected), "{expected}: {anchors:?}");
@@ -832,11 +878,7 @@ mod tests {
     fn raw_html_text_is_not_parsed_as_nested_elements_and_entities_decode() {
         let root = tempfile::tempdir().unwrap();
         let source = "<script id=script>const example = '<a id=fake>';</script>\n\n<a id='&copy;&#xE9;&#233;'></a>\n\n<textarea><a id=also-fake></textarea>\n";
-        let index = WorkspaceIndex::new(
-            root.path().to_path_buf(),
-            vec![file(root.path(), "a.md", source)],
-            true,
-        );
+        let index = single_document(root.path(), source);
         let anchors = index.anchors("a.md").unwrap();
         assert!(anchors.contains("script"));
         assert!(anchors.contains("©éé"));
@@ -916,8 +958,14 @@ mod tests {
             root.path(),
         )
         .unwrap();
-        let mut from = file(root.path(), "site/guide/from.md", "# From");
-        from.config = config;
+        let from = IndexedFile::new(
+            "site/guide/from.md".into(),
+            root.path().join("site/guide/from.md"),
+            crate::md::parse("# From").unwrap().into(),
+            config,
+            &crate::config::CliOverrides::default(),
+        )
+        .unwrap();
         let files = vec![
             from,
             file(root.path(), "site/guide/index.md", "# Guide"),

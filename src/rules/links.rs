@@ -2,8 +2,8 @@ use std::path::Path;
 
 use crate::diagnostics::Diagnostic;
 use crate::paths::{
-    LinkPathError, Listings, TargetStatus, local_link_targets, local_target_status, normalize,
-    select_target,
+    LinkPathError, Listings, TargetPreference, TargetStatus, local_link_targets,
+    local_target_status, normalize, select_target,
 };
 
 use crate::rules::CheckContext;
@@ -15,18 +15,8 @@ pub(crate) struct LinkResult {
     pub incomplete: bool,
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub enum PathStatus {
-    Exists,
-    /// Exists under this workspace-relative spelling, which differs in letter case.
-    CaseMismatch(String),
-    Missing,
-    Unknown,
-    Error(String),
-}
-
 pub trait WorkspaceFiles {
-    fn status(&self, workspace_root: &Path, target: &Path) -> PathStatus;
+    fn status(&self, workspace_root: &Path, target: &Path) -> TargetStatus;
 }
 
 #[derive(Default)]
@@ -35,39 +25,19 @@ pub struct LocalWorkspaceFiles {
 }
 
 impl WorkspaceFiles for LocalWorkspaceFiles {
-    fn status(&self, workspace_root: &Path, target: &Path) -> PathStatus {
+    fn status(&self, workspace_root: &Path, target: &Path) -> TargetStatus {
         let status = local_target_status(workspace_root, target);
-        self.listings.confirm(workspace_root, target, status).into()
-    }
-}
-
-impl From<TargetStatus> for PathStatus {
-    fn from(status: TargetStatus) -> Self {
-        match status {
-            TargetStatus::File | TargetStatus::Directory => Self::Exists,
-            TargetStatus::CaseMismatch(actual) => Self::CaseMismatch(actual),
-            TargetStatus::Missing => Self::Missing,
-            TargetStatus::Unknown | TargetStatus::OutsideWorkspace => Self::Unknown,
-            TargetStatus::Unreadable(error) => Self::Error(error),
-        }
-    }
-}
-
-impl From<PathStatus> for TargetStatus {
-    fn from(status: PathStatus) -> Self {
-        match status {
-            PathStatus::Exists => Self::File,
-            PathStatus::CaseMismatch(actual) => Self::CaseMismatch(actual),
-            PathStatus::Missing => Self::Missing,
-            PathStatus::Unknown => Self::Unknown,
-            PathStatus::Error(error) => Self::Unreadable(error),
-        }
+        self.listings.confirm(workspace_root, target, status)
     }
 }
 
 pub(crate) fn check(context: &CheckContext<'_>, files: &dyn WorkspaceFiles) -> LinkResult {
     let mut result = LinkResult::default();
-    let site = context.config.site_routes(context.path);
+    let site = context
+        .policy
+        .site
+        .as_ref()
+        .map(|site| context.config.site_routes(site));
     let root = normalize(context.workspace_root);
     let current = normalize(context.path);
     for link in &context.document.links {
@@ -85,19 +55,19 @@ pub(crate) fn check(context: &CheckContext<'_>, files: &dyn WorkspaceFiles) -> L
                 continue;
             }
         };
-        let (_, status) = select_target(&root, &targets, |target| {
+        let (_, status) = select_target(&root, &targets, TargetPreference::Existing, |target| {
             // The current document can be a new stdin overlay with no disk entry.
             if target.path == current {
                 TargetStatus::File
             } else {
-                files.status(context.workspace_root, &target.path).into()
+                files.status(context.workspace_root, &target.path)
             }
         });
         match status {
             TargetStatus::File | TargetStatus::Directory => {}
             TargetStatus::CaseMismatch(actual) => {
                 result.diagnostics.push(Diagnostic::new(
-                    context.filename,
+                    context.filename(),
                     &context.document.source,
                     "LNK001",
                     link.span,
@@ -116,7 +86,7 @@ pub(crate) fn check(context: &CheckContext<'_>, files: &dyn WorkspaceFiles) -> L
                     ),
                 };
                 result.diagnostics.push(Diagnostic::new(
-                    context.filename,
+                    context.filename(),
                     &context.document.source,
                     "LNK001",
                     link.span,

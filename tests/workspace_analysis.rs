@@ -1,53 +1,10 @@
-use std::io::Write;
-use std::path::Path;
-use std::process::{Command, Output, Stdio};
+mod common;
+use common::{run, value, workspace, write};
 
-use serde_json::{Value, json};
+use std::process::Output;
+
+use serde_json::json;
 use tempfile::TempDir;
-
-fn write(root: &Path, path: &str, source: &str) {
-    let path = root.join(path);
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::fs::write(path, source).unwrap();
-}
-
-fn workspace(config: &str) -> TempDir {
-    let root = TempDir::new().unwrap();
-    write(root.path(), "seiso.toml", config);
-    root
-}
-
-fn run(root: &Path, args: &[&str], source: Option<&str>) -> Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_seiso"))
-        .current_dir(root)
-        .args(args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    if let Some(source) = source {
-        child
-            .stdin
-            .take()
-            .unwrap()
-            .write_all(source.as_bytes())
-            .unwrap();
-    } else {
-        drop(child.stdin.take());
-    }
-    child.wait_with_output().unwrap()
-}
-
-fn value(output: &Output) -> Value {
-    serde_json::from_slice(&output.stdout).unwrap_or_else(|error| {
-        panic!(
-            "{error}; stdout={} stderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        )
-    })
-}
 
 fn status(output: &Output, expected: i32) {
     assert_eq!(
@@ -756,4 +713,57 @@ fn parallel_reads_keep_output_deterministic_and_continue_after_an_input_error() 
     status(&partial, 2);
     assert_eq!(value(&partial).as_array().unwrap().len(), 127);
     assert!(String::from_utf8_lossy(&partial.stderr).contains("pages/064.md"));
+}
+
+/// A workspace diagnostic can report a dependency outside the selection, whose
+/// single-document rules did not run, so their suppressions stay incomplete.
+#[test]
+fn unselected_dependencies_report_unchecked_suppressions_as_incomplete() {
+    let root = workspace(
+        "preview=true\n[[kinds]]\npath='**'\nkind='reference'\n[lint]\nselect=['OWN002','STL001','ORD001']\n",
+    );
+    let definitions = "- `host`: Server address.\n- `port`: Listening port.\n- `user`: Account name.\n- `token`: Access token.\n- `timeout`: Request timeout.\n";
+    write(root.path(), "a.md", &format!("# Settings\n\n{definitions}"));
+    write(
+        root.path(),
+        "b.md",
+        &format!(
+            "# Settings copy\n\n<!-- seiso: allow STL001 -- Enabled, but b.md is not checked. -->\nCurrently the limit is 50 requests.\n\n<!-- seiso: allow ORD001 -- Reference pages do not enable it. -->\nPlain text.\n\n{definitions}"
+        ),
+    );
+    let output = run(
+        root.path(),
+        &["check", "a.md", "--statistics", "--output-format", "json"],
+        None,
+    );
+    status(&output, 1);
+    let report = value(&output);
+    assert!(
+        report["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|diagnostic| diagnostic["code"] == "OWN002" && diagnostic["filename"] == "b.md")
+    );
+    let states: Vec<_> = report["statistics"]["suppressions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|record| {
+            (
+                record["filename"].clone(),
+                record["declaration"]["states"].clone(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        states,
+        [
+            (
+                json!("b.md"),
+                json!({"STL001": {"state": "incomplete", "count": 0}})
+            ),
+            (json!("b.md"), json!({"ORD001": {"state": "rule_disabled"}})),
+        ]
+    );
 }

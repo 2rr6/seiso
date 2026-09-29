@@ -6,6 +6,7 @@ use crate::diagnostics::{Diagnostic, RelatedLocation, Span, sorted_diagnostics};
 use crate::index::{IndexedFile, LinkStatus, WorkspaceIndex};
 use crate::md::{BlockKind, Document, FragmentKind, Language};
 use crate::paths::normalize;
+use crate::rules::Kind;
 
 const DUPLICATION_RULES: [&str; 5] = ["DUP001", "DUP002", "DUP003", "OWN001", "OWN002"];
 
@@ -76,14 +77,15 @@ pub fn check(index: &WorkspaceIndex) -> CrossReport {
 }
 
 fn enabled(file: &IndexedFile, code: &str) -> bool {
-    file.kind.as_deref() != Some("generated") && file.enabled_rules.iter().any(|item| item == code)
+    file.policy().kind.value() != Some(Kind::Generated)
+        && file.policy().enabled_rules.iter().any(|item| item == code)
 }
 
 fn mark_incomplete(report: &mut CrossReport, file: &IndexedFile, code: &str) {
     if enabled(file, code) {
         report
             .incomplete
-            .entry(file.filename.clone())
+            .entry(file.filename().to_owned())
             .or_default()
             .insert(code.to_owned());
     }
@@ -93,8 +95,8 @@ fn check_links(index: &WorkspaceIndex, file: &IndexedFile, report: &mut CrossRep
     if !enabled(file, "LNK002") && !enabled(file, "PTR002") {
         return;
     }
-    for link in &file.document.links {
-        let resolution = index.resolve_link(&file.filename, &link.destination);
+    for link in &file.document().links {
+        let resolution = index.resolve_link(file.filename(), &link.destination);
         match resolution.status {
             LinkStatus::AnchorMissing if enabled(file, "LNK002") => {
                 let target = resolution
@@ -103,14 +105,14 @@ fn check_links(index: &WorkspaceIndex, file: &IndexedFile, report: &mut CrossRep
                     .and_then(|name| index.file(name));
                 if let Some(target) = target {
                     let mut diagnostic = Diagnostic::new(
-                        &file.filename,
-                        &file.document.source,
+                        file.filename(),
+                        &file.document().source,
                         "LNK002",
                         link.span,
                         format!(
                             "Anchor {:?} does not exist in {}.",
                             resolution.anchor.as_deref().unwrap_or_default(),
-                            target.filename
+                            target.filename()
                         ),
                         "Update the fragment to an existing heading or explicit HTML anchor in the target document.",
                     );
@@ -128,19 +130,20 @@ fn check_links(index: &WorkspaceIndex, file: &IndexedFile, report: &mut CrossRep
                 };
                 let path = index.root.join(target);
                 let allowed = file
-                    .config
+                    .config()
                     .settings
                     .lint
                     .ptr
                     .catalog_dirs
                     .iter()
                     .any(|catalog| {
-                        normalize(file.config.directory.join(catalog.trim_end_matches('/'))) == path
+                        normalize(file.config().directory.join(catalog.trim_end_matches('/')))
+                            == path
                     });
                 if !allowed {
                     let mut diagnostic = Diagnostic::new(
-                        &file.filename,
-                        &file.document.source,
+                        file.filename(),
+                        &file.document().source,
                         "PTR002",
                         link.span,
                         format!(
@@ -167,7 +170,7 @@ fn check_links(index: &WorkspaceIndex, file: &IndexedFile, report: &mut CrossRep
                 mark_incomplete(report, file, "LNK002");
                 mark_incomplete(report, file, "PTR002");
                 if let Some(error) = resolution.error {
-                    report.errors.push((file.filename.clone(), error));
+                    report.errors.push((file.filename().to_owned(), error));
                 }
             }
             _ => {}
@@ -185,15 +188,11 @@ struct Unit {
     whole_document: bool,
 }
 
-fn contains(outer: Span, inner: Span) -> bool {
-    outer.start <= inner.start && inner.end <= outer.end
-}
-
 fn identifiers(document: &Document, span: Span) -> BTreeSet<String> {
     document
         .identifiers
         .iter()
-        .filter(|id| contains(span, id.span))
+        .filter(|id| span.contains(id.span))
         .map(|id| id.text.clone())
         .collect()
 }
@@ -201,7 +200,7 @@ fn identifiers(document: &Document, span: Span) -> BTreeSet<String> {
 fn definition_units(index: &WorkspaceIndex) -> Vec<Unit> {
     let mut units = Vec::new();
     for (file_index, file) in index.files().iter().enumerate() {
-        let document = &file.document;
+        let document = file.document();
         for (block_index, block) in document.blocks.iter().enumerate() {
             let mut heads = BTreeSet::new();
             match block.kind {
@@ -240,7 +239,7 @@ fn definition_units(index: &WorkspaceIndex) -> Vec<Unit> {
                         let Some(identifier) = document
                             .identifiers
                             .iter()
-                            .find(|id| contains(span, id.span))
+                            .find(|id| span.contains(id.span))
                         else {
                             continue;
                         };
@@ -303,9 +302,9 @@ fn ancestors(document: &Document, block: usize) -> impl Iterator<Item = usize> +
 fn section_units(index: &WorkspaceIndex) -> Vec<Unit> {
     let mut units = Vec::new();
     for (file_index, file) in index.files().iter().enumerate() {
-        for (section_index, section) in file.document.sections.iter().enumerate() {
+        for (section_index, section) in file.document().sections.iter().enumerate() {
             let values = file
-                .document
+                .document()
                 .identifiers
                 .iter()
                 .filter(|id| id.section == section_index)
@@ -313,7 +312,7 @@ fn section_units(index: &WorkspaceIndex) -> Vec<Unit> {
                 .collect();
             // Only the section's own content participates, excluding child sections.
             let end = section.children.first().map_or(section.span.end, |child| {
-                file.document.sections[*child].span.start
+                file.document().sections[*child].span.start
             });
             units.push(Unit {
                 file: file_index,
@@ -324,11 +323,11 @@ fn section_units(index: &WorkspaceIndex) -> Vec<Unit> {
                 whole_document: false,
             });
         }
-        let span = Span::new(0, file.document.source.len());
+        let span = Span::new(0, file.document().source.len());
         units.push(Unit {
             file: file_index,
             span,
-            values: identifiers(&file.document, span),
+            values: identifiers(file.document(), span),
             heads: BTreeSet::new(),
             paragraph: false,
             whole_document: true,
@@ -340,12 +339,12 @@ fn section_units(index: &WorkspaceIndex) -> Vec<Unit> {
 fn paragraph_units(index: &WorkspaceIndex) -> Vec<Unit> {
     let mut units = Vec::new();
     for (file_index, file) in index.files().iter().enumerate() {
-        let settings = &file.config.settings.lint.dup;
-        for (block_index, block) in file.document.blocks.iter().enumerate() {
+        let settings = &file.config().settings.lint.dup;
+        for (block_index, block) in file.document().blocks.iter().enumerate() {
             if block.kind != BlockKind::Paragraph
-                || ancestors(&file.document, block_index).any(|parent| {
+                || ancestors(file.document(), block_index).any(|parent| {
                     matches!(
-                        file.document.blocks[parent].kind,
+                        file.document().blocks[parent].kind,
                         BlockKind::List | BlockKind::Table | BlockKind::Blockquote
                     )
                 })
@@ -355,7 +354,7 @@ fn paragraph_units(index: &WorkspaceIndex) -> Vec<Unit> {
             let text = block
                 .sentences
                 .iter()
-                .flat_map(|sentence| &file.document.sentences[*sentence].fragments)
+                .flat_map(|sentence| &file.document().sentences[*sentence].fragments)
                 .filter(|fragment| {
                     matches!(
                         fragment.kind,
@@ -410,7 +409,8 @@ fn language(language: Language) -> u8 {
 }
 
 fn same_domain(left: &IndexedFile, right: &IndexedFile) -> bool {
-    left.domain == right.domain && left.document.language == right.document.language
+    left.policy().domain_key() == right.policy().domain_key()
+        && left.document().language == right.document().language
 }
 
 type Edges = BTreeMap<usize, BTreeSet<usize>>;
@@ -426,8 +426,11 @@ fn similarity_edges(
     let mut minimum_threshold: BTreeMap<(&str, u8), f64> = BTreeMap::new();
     for unit in units {
         let file = &index.files()[unit.file];
-        let domain = (file.domain.as_str(), language(file.document.language));
-        let settings = &file.config.settings.lint.dup;
+        let domain = (
+            file.policy().domain_key(),
+            language(file.document().language),
+        );
+        let settings = &file.config().settings.lint.dup;
         let threshold = if unit.paragraph {
             settings.min_paragraph_similarity
         } else {
@@ -455,7 +458,10 @@ fn similarity_edges(
         } else {
             &unit.values
         };
-        let domain = (file.domain.as_str(), language(file.document.language));
+        let domain = (
+            file.policy().domain_key(),
+            language(file.document().language),
+        );
         let threshold = minimum_threshold[&domain];
         // A qualifying Jaccard pair must intersect in these prefixes under one
         // shared token ordering. Rarest-first ordering avoids common prose shingles.
@@ -469,8 +475,8 @@ fn similarity_edges(
         let mut candidates = BTreeSet::new();
         for value in &prefix {
             let key = (
-                file.domain.as_str(),
-                language(file.document.language),
+                file.policy().domain_key(),
+                language(file.document().language),
                 *value,
             );
             if let Some(previous) = postings.get(&key) {
@@ -482,8 +488,8 @@ fn similarity_edges(
             let other_file = &index.files()[other.file];
             if unit.file == other.file
                 || (plan_only
-                    && file.kind.as_deref() != Some("plan")
-                    && other_file.kind.as_deref() != Some("plan"))
+                    && file.policy().kind.value() != Some(Kind::Plan)
+                    && other_file.policy().kind.value() != Some(Kind::Plan))
             {
                 continue;
             }
@@ -507,11 +513,12 @@ fn similarity_edges(
             for (source, target, source_file) in
                 [(current, previous, file), (previous, current, other_file)]
             {
-                let settings = &source_file.config.settings.lint.dup;
+                let settings = &source_file.config().settings.lint.dup;
                 let qualifies = if unit.paragraph {
                     // Different shingle sizes do not describe the same comparison measure.
-                    settings.shingle_size == file.config.settings.lint.dup.shingle_size
-                        && settings.shingle_size == other_file.config.settings.lint.dup.shingle_size
+                    settings.shingle_size == file.config().settings.lint.dup.shingle_size
+                        && settings.shingle_size
+                            == other_file.config().settings.lint.dup.shingle_size
                         && similarity >= settings.min_paragraph_similarity
                 } else {
                     intersection >= settings.min_identifiers && similarity >= settings.min_jaccard
@@ -524,8 +531,8 @@ fn similarity_edges(
         for value in prefix {
             postings
                 .entry((
-                    file.domain.as_str(),
-                    language(file.document.language),
+                    file.policy().domain_key(),
+                    language(file.document().language),
                     value,
                 ))
                 .or_default()
@@ -542,26 +549,26 @@ fn restatement_edges(index: &WorkspaceIndex, units: &[Unit], report: &mut CrossR
             continue;
         }
         let file = &index.files()[unit.file];
-        if unit.values.len() < file.config.settings.lint.dup.min_identifiers {
+        if unit.values.len() < file.config().settings.lint.dup.min_identifiers {
             continue;
         }
         let Some(link) = file
-            .document
+            .document()
             .links
             .iter()
-            .filter(|link| !link.image && contains(unit.span, link.span))
+            .filter(|link| !link.image && unit.span.contains(link.span))
             .max_by_key(|link| link.span.end)
         else {
             continue;
         };
-        let tail = &file.document.source[link.span.end..unit.span.end];
+        let tail = &file.document().source[link.span.end..unit.span.end];
         if !tail
             .chars()
             .all(|character| character.is_whitespace() || ".。!！?？;；".contains(character))
         {
             continue;
         }
-        let resolution = index.resolve_link(&file.filename, &link.destination);
+        let resolution = index.resolve_link(file.filename(), &link.destination);
         if matches!(
             resolution.status,
             LinkStatus::AnchorUnknown
@@ -585,27 +592,27 @@ fn restatement_edges(index: &WorkspaceIndex, units: &[Unit], report: &mut CrossR
         else {
             continue;
         };
-        if file.filename == target.filename || !same_domain(file, target) {
+        if file.filename() == target.filename() || !same_domain(file, target) {
             continue;
         }
         let anchor_span = resolution
             .anchor
             .as_deref()
-            .and_then(|anchor| index.anchor_span(&target.filename, anchor));
+            .and_then(|anchor| index.anchor_span(target.filename(), anchor));
         let target_section = if let Some(span) = anchor_span {
             units
                 .iter()
                 .enumerate()
                 .filter(|(_, unit)| {
                     !unit.whole_document
-                        && index.files()[unit.file].filename == target.filename
-                        && contains(unit.span, span)
+                        && index.files()[unit.file].filename() == target.filename()
+                        && unit.span.contains(span)
                 })
                 .min_by_key(|(_, unit)| unit.span.len())
         } else {
             // A link without a fragment addresses the complete target document.
             units.iter().enumerate().find(|(_, unit)| {
-                index.files()[unit.file].filename == target.filename && unit.whole_document
+                index.files()[unit.file].filename() == target.filename() && unit.whole_document
             })
         };
         let Some((target_index, target_unit)) = target_section else {
@@ -613,8 +620,8 @@ fn restatement_edges(index: &WorkspaceIndex, units: &[Unit], report: &mut CrossR
         };
         let shared = unit.values.intersection(&target_unit.values).count();
         let ratio = shared as f64 / unit.values.len() as f64;
-        if shared >= file.config.settings.lint.dup.min_identifiers
-            && ratio >= file.config.settings.lint.dup.min_jaccard
+        if shared >= file.config().settings.lint.dup.min_identifiers
+            && ratio >= file.config().settings.lint.dup.min_jaccard
         {
             edges.entry(source_index).or_default().insert(target_index);
             edges.entry(target_index).or_default().insert(source_index);
@@ -625,7 +632,7 @@ fn restatement_edges(index: &WorkspaceIndex, units: &[Unit], report: &mut CrossR
 
 fn rank(file: &IndexedFile) -> u8 {
     if file
-        .document
+        .document()
         .frontmatter
         .as_ref()
         .is_some_and(|frontmatter| {
@@ -634,18 +641,18 @@ fn rank(file: &IndexedFile) -> u8 {
     {
         return 7;
     }
-    match file.kind.as_deref() {
-        Some("generated") => 6,
-        Some("reference") => 5,
-        Some("adr") => 4,
-        Some("howto") => 3,
-        Some("readme") => 2,
+    match file.policy().kind.value() {
+        Some(Kind::Generated) => 6,
+        Some(Kind::Reference) => 5,
+        Some(Kind::Adr) => 4,
+        Some(Kind::Howto) => 3,
+        Some(Kind::Readme) => 2,
         _ => 1,
     }
 }
 
 fn related(file: &IndexedFile, span: Span, message: &str) -> RelatedLocation {
-    RelatedLocation::new(&file.filename, &file.document.source, span, message)
+    RelatedLocation::new(file.filename(), &file.document().source, span, message)
 }
 
 fn emit_owned(
@@ -702,8 +709,8 @@ fn emit_owned(
             continue;
         }
         let mut diagnostic = Diagnostic::new(
-            &file.filename,
-            &file.document.source,
+            file.filename(),
+            &file.document().source,
             rule,
             unit.span,
             message,
@@ -747,7 +754,15 @@ mod tests {
                         .filter(|bit| mask & (1 << bit) != 0)
                         .map(|bit| format!("key{bit}"))
                         .collect();
-                    let mut config = Config::defaults(root.path()).unwrap();
+                    let mut config = Config::parse(
+                        &format!(
+                            "[[kinds]]\npath = '**'\nkind = 'reference'\n\
+                             [[domains]]\npath = '**'\nname = '{}'\n",
+                            (mask / 2) % 2
+                        ),
+                        root.path(),
+                    )
+                    .unwrap();
                     config.settings.lint.dup.min_identifiers = 2;
                     config.settings.lint.dup.min_jaccard = if mask % 2 == 0 {
                         threshold
@@ -763,15 +778,16 @@ mod tests {
                     } else {
                         Language::En
                     };
-                    files.push(IndexedFile {
-                        path: root.path().join(&filename),
-                        filename,
-                        document: document.into(),
-                        kind: Some("reference".into()),
-                        domain: ((mask / 2) % 2).to_string(),
-                        enabled_rules: Vec::new(),
-                        config,
-                    });
+                    files.push(
+                        IndexedFile::new(
+                            filename.clone(),
+                            root.path().join(&filename),
+                            document.into(),
+                            config,
+                            &crate::config::CliOverrides::default(),
+                        )
+                        .unwrap(),
+                    );
                     units.push(Unit {
                         file: units.len(),
                         span: Span::new(0, 0),
@@ -793,7 +809,7 @@ mod tests {
                         }
                         let shared = source.values.intersection(&target.values).count();
                         let union = source.values.union(&target.values).count();
-                        let settings = &index.files()[left].config.settings.lint.dup;
+                        let settings = &index.files()[left].config().settings.lint.dup;
                         let threshold = if paragraph {
                             settings.min_paragraph_similarity
                         } else {
