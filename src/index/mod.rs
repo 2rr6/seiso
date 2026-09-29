@@ -26,7 +26,7 @@ pub struct IndexedFile {
 #[derive(Clone, Debug)]
 pub struct WorkspaceIndex {
     pub root: PathBuf,
-    pub files: Vec<IndexedFile>,
+    files: Vec<IndexedFile>,
     pub complete: bool,
     anchors: BTreeMap<String, OnceLock<AnchorIndex>>,
     inventory: Option<BTreeMap<String, InventoryEntryKind>>,
@@ -93,6 +93,19 @@ impl WorkspaceIndex {
         self
     }
 
+    /// Borrow files in filename order without invalidating lookups or cached anchors.
+    /// To change the file set or its documents, construct a new index.
+    pub fn files(&self) -> &[IndexedFile] {
+        &self.files
+    }
+
+    /// Consume the index to recover its files without cloning their documents.
+    /// Cached anchors are discarded, so changed files require a new index.
+    pub fn into_files(self) -> Vec<IndexedFile> {
+        self.files
+    }
+
+    /// Look up an indexed file by its workspace-relative filename.
     pub fn file(&self, filename: &str) -> Option<&IndexedFile> {
         self.files
             .binary_search_by(|file| file.filename.as_str().cmp(filename))
@@ -508,6 +521,35 @@ mod tests {
             enabled_rules: Vec::new(),
             config: Config::defaults(root).unwrap(),
         }
+    }
+
+    /// Owned files can be changed only after consuming and rebuilding the index.
+    #[test]
+    fn rebuilding_owned_files_restores_order_and_refreshes_anchors() {
+        let root = tempfile::tempdir().unwrap();
+        let index = WorkspaceIndex::new(
+            root.path().to_path_buf(),
+            vec![
+                file(root.path(), "b.md", "# Other\n"),
+                file(root.path(), "a.md", "# Before\n"),
+            ],
+            true,
+        );
+        assert_eq!(index.files()[0].filename, "a.md");
+        assert!(index.anchors("a.md").unwrap().contains("before"));
+        let original_document = Arc::clone(&index.files()[1].document);
+
+        let mut files = index.into_files();
+        assert!(Arc::ptr_eq(&original_document, &files[1].document));
+        files[0] = file(root.path(), "renamed.md", "# After\n");
+        let rebuilt = WorkspaceIndex::new(root.path().to_path_buf(), files, true);
+        assert_eq!(rebuilt.files()[0].filename, "b.md");
+        assert!(rebuilt.file("a.md").is_none());
+        assert!(rebuilt.anchors("a.md").is_none());
+        assert!(rebuilt.file("renamed.md").is_some());
+        let anchors = rebuilt.anchors("renamed.md").unwrap();
+        assert!(anchors.contains("after"));
+        assert!(!anchors.contains("before"));
     }
 
     /// File-only checks and a target lookup leave unrelated anchor indexes lazy.
