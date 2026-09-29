@@ -3,7 +3,9 @@
 Changes to seiso start as GitHub issues and land through pull requests. This
 guide covers how to propose a change, name a branch, write commits, and open a
 pull request. The [development guide](docs/guides/development.md) covers
-building and testing.
+building and testing. The rules for taking issues and for pull request scope
+apply to contributors without write access to the repository. Maintainers
+assign issues and prepare releases.
 
 ## Start with an issue
 
@@ -11,6 +13,13 @@ Open or find an issue before writing code. A pull request without an issue is
 acceptable only for a small, self-evident fix, such as a typo or a broken link.
 For anything larger, agree on the direction with a maintainer in the issue
 before starting the work.
+
+You can work on issues labeled `help wanted` and on issues you opened
+yourself. Comment on the issue when you start, so that nobody else duplicates
+the work. Other issues often wait on a design decision or involve evaluation or
+release work. For those, ask in the issue and wait until a maintainer assigns
+it to you. A pull request for an issue that is neither open to you nor
+assigned to you may be closed.
 
 Search existing issues first. Title the issue with a one-line summary of the
 problem rather than the solution, for example
@@ -129,11 +138,19 @@ Before requesting review:
   explanations in `docs/rules/` in the same pull request. Markdown in this
   repository must pass `seiso check`.
 - Update the branch with the latest `main`; only an up-to-date branch can merge.
-- Leave version numbers and release notes unchanged. Maintainers prepare them
-  when [publishing](docs/guides/publishing.md) a release.
+- Change only what the issue asks for, and leave version numbers and release
+  notes unchanged. Maintainers prepare them when
+  [publishing](docs/guides/publishing.md) a release.
 
 Open the pull request as a draft while the work is in progress. Merging
 requires approval from a maintainer.
+
+You are responsible for every line in your pull request, including lines an AI
+tool wrote. Read the whole diff before requesting review, and name the tool in
+the description if it wrote part of the change. Open another pull request only
+after a maintainer has reviewed your current one. A pull request that shows
+its author did not review it, such as one that edits files unrelated to the
+issue, may be closed without a detailed review.
 
 ## License
 
