@@ -12,7 +12,9 @@ assign issues and prepare releases.
 Open or find an issue before writing code. A pull request without an issue is
 acceptable only for a small, self-evident fix, such as a typo or a broken link.
 For anything larger, agree on the direction with a maintainer in the issue
-before starting the work.
+before starting the work. Keep each pull request to one issue. When an issue
+needs a large change, agree in the issue on how to split it into pull requests
+that can each be reviewed on their own.
 
 You can work on issues labeled `help wanted` and on issues you opened
 yourself. Comment on the issue when you start, so that nobody else duplicates
