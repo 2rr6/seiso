@@ -246,6 +246,57 @@ fn the_written_path_wins_over_a_route_and_the_dump_shows_resolved_targets() {
     assert_eq!(outside["links"][0]["resolution"]["status"], "missing");
 }
 
+/// Some generators lowercase page routes, so `/guide/contributing` can serve
+/// `CONTRIBUTING.md`; no generator serves `/guide/Setup` for `setup.md`, and
+/// files served under their own names keep their case.
+#[test]
+fn only_a_lowercase_route_reaches_a_page_whose_name_differs_in_letter_case() {
+    let workspace = site_workspace(SITE);
+    let root = workspace.path();
+    write(
+        root,
+        "site/guide/CONTRIBUTING.md",
+        "# Contributing\n\n## Setup\n",
+    );
+    write(root, "site/public/Banner.png", "image");
+    write(root, "site/assets/Diagram.svg", "image");
+    write(
+        root,
+        "site/guide/start.md",
+        "---\nkind: howto\n---\n# Start\n\n[route](/guide/contributing#setup) [anchor](/guide/contributing#removed)\n\n[route case](/guide/Setup)\n\n[path case](Setup.md)\n\n![public](/banner.png) ![root](/assets/diagram.svg)\n",
+    );
+    let found = diagnostics(root);
+    let summary: Vec<_> = found
+        .iter()
+        .map(|(code, message, _)| (code.as_str(), message.as_str()))
+        .collect();
+    assert_eq!(
+        summary,
+        [
+            (
+                "LNK002",
+                "Anchor \"removed\" does not exist in site/guide/CONTRIBUTING.md."
+            ),
+            (
+                "LNK001",
+                "Local link target \"/guide/Setup\" differs in letter case from \"site/guide/setup.md\"."
+            ),
+            (
+                "LNK001",
+                "Local link target \"Setup.md\" differs in letter case from \"site/guide/setup.md\"."
+            ),
+            (
+                "LNK001",
+                "Local link target \"/banner.png\" differs in letter case from \"site/public/Banner.png\"."
+            ),
+            (
+                "LNK001",
+                "Local link target \"/assets/diagram.svg\" differs in letter case from \"site/assets/Diagram.svg\"."
+            ),
+        ]
+    );
+}
+
 #[test]
 fn policy_names_each_file_site() {
     let workspace = site_workspace(SITE);
