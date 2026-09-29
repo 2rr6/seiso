@@ -694,7 +694,11 @@ fn init_suggests_agent_kinds_for_discovered_nested_instructions() {
         "# Agent instructions\n\nRun the project checks.\n",
     );
     write(root, "docs/CLAUDE.md", "@AGENTS.md\n");
-    write(root, ".claude/skills/review/SKILL.md", "# Review\n");
+    write(
+        root,
+        ".claude/skills/review/SKILL.md",
+        "---\nname: review-docs\ndescription: |\n  Review Markdown changes.\n  Keep links current.\nmetadata:\n  owner: docs\n  checks:\n    - links\n---\n# Review\n",
+    );
     write(
         root,
         ".github/copilot-instructions.md",
@@ -785,6 +789,107 @@ fn init_does_not_suggest_root_agent_mapping_for_nested_configuration() {
     assert_eq!(diagnostics.len(), 1);
     assert_eq!(diagnostics[0]["filename"], "nested/AGENTS.md");
     assert_eq!(diagnostics[0]["code"], "KND001");
+}
+
+#[test]
+fn skill_metadata_maps_agents_and_checks_only_body_at_original_location() {
+    let workspace = TempDir::new().unwrap();
+    let root = workspace.path();
+    std::fs::create_dir(root.join(".git")).unwrap();
+    let filename = ".claude/skills/review/SKILL.md";
+    let source = "---\nname: review-docs\ndescription: |\n  Currently uses v1.2.3.\n  Review Markdown changes.\nmetadata:\n  owner: docs\n  checks:\n    - links\n    - consistency\n---\n# Review\n\nCurrently uses v2.3.4.\n";
+    write(root, filename, source);
+
+    assert_eq!(run(root, &["init"], None).status.code(), Some(0));
+    let config = std::fs::read_to_string(root.join("seiso.toml")).unwrap();
+    assert!(config.contains("path = \"**/SKILL.md\"\nkind = \"agents\""));
+    let policy = run(root, &["policy"], None);
+    assert_eq!(policy.status.code(), Some(0));
+    let report = value(&policy);
+    let skill = report["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|file| file["filename"] == filename)
+        .unwrap();
+    assert_eq!(skill["kind"]["value"], "agents");
+    assert_eq!(skill["kind"]["source"], "configuration");
+
+    let output = run(
+        root,
+        &[
+            "check",
+            "--preview",
+            "--select",
+            "STL001",
+            "--no-cache",
+            "--output-format",
+            "json",
+        ],
+        None,
+    );
+    assert_eq!(output.status.code(), Some(1));
+    let diagnostics = value(&output);
+    let diagnostics = diagnostics.as_array().unwrap();
+    assert_eq!(diagnostics.len(), 1);
+    let diagnostic = &diagnostics[0];
+    assert_eq!(diagnostic["filename"], filename);
+    assert_eq!(diagnostic["code"], "STL001");
+    assert_eq!(diagnostic["location"]["row"], 14);
+    assert_eq!(diagnostic["location"]["column"], 16);
+    let start = source.rfind("v2.3.4").unwrap();
+    assert_eq!(diagnostic["byte_range"]["start"], start);
+    assert_eq!(diagnostic["byte_range"]["end"], start + "v2.3.4".len());
+}
+
+#[test]
+fn malformed_skill_yaml_keeps_knd001_without_mapped_kind_fallback() {
+    let workspace = TempDir::new().unwrap();
+    let root = workspace.path();
+    std::fs::create_dir(root.join(".git")).unwrap();
+    let filename = ".claude/skills/review/SKILL.md";
+    write(
+        root,
+        filename,
+        "---\nname: review-docs\ndescription: |\n  Review Markdown.\nmetadata:\n  checks: [broken\n---\n# Review\n",
+    );
+    assert_eq!(run(root, &["init"], None).status.code(), Some(0));
+
+    let parsed = run(root, &["parse", "--output-format", "json"], None);
+    assert_eq!(parsed.status.code(), Some(0));
+    let parsed = value(&parsed);
+    let skill = parsed["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|file| file["filename"] == filename)
+        .unwrap();
+    assert!(skill["kind"]["value"].is_null());
+    assert_eq!(skill["kind"]["source"], "frontmatter");
+    assert!(
+        !skill["document"]["frontmatter"]["errors"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+
+    let check = run(
+        root,
+        &["check", "--no-cache", "--output-format", "json"],
+        None,
+    );
+    assert_eq!(check.status.code(), Some(1));
+    let diagnostics = value(&check);
+    let diagnostics = diagnostics.as_array().unwrap();
+    assert_eq!(diagnostics.len(), 1);
+    assert_eq!(diagnostics[0]["filename"], filename);
+    assert_eq!(diagnostics[0]["code"], "KND001");
+    assert!(
+        diagnostics[0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("frontmatter is invalid")
+    );
 }
 
 #[test]
