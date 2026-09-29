@@ -746,6 +746,48 @@ fn init_does_not_suggest_agent_kinds_for_excluded_or_ignored_files() {
 }
 
 #[test]
+fn init_does_not_suggest_root_agent_mapping_for_nested_configuration() {
+    let workspace = TempDir::new().unwrap();
+    let root = workspace.path();
+    std::fs::create_dir(root.join(".git")).unwrap();
+    write(root, "nested/seiso.toml", "");
+    write(root, "nested/AGENTS.md", "# Nested agent instructions\n");
+
+    assert_eq!(run(root, &["init"], None).status.code(), Some(0));
+    let root_config = std::fs::read_to_string(root.join("seiso.toml")).unwrap();
+    assert!(
+        !root_config.contains("path = \"**/AGENTS.md\"\nkind = \"agents\""),
+        "{root_config}"
+    );
+    assert_eq!(std::fs::read(root.join("nested/seiso.toml")).unwrap(), b"");
+
+    let policy = run(root, &["policy"], None);
+    assert_eq!(policy.status.code(), Some(0));
+    let report = value(&policy);
+    let nested = report["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|file| file["filename"] == "nested/AGENTS.md")
+        .unwrap();
+    assert_eq!(nested["configuration"], "nested/seiso.toml");
+    assert!(nested["kind"]["value"].is_null());
+    assert_eq!(nested["kind"]["source"], "unknown");
+
+    let check = run(
+        root,
+        &["check", "--no-cache", "--output-format", "json"],
+        None,
+    );
+    assert_eq!(check.status.code(), Some(1));
+    let diagnostics = value(&check);
+    let diagnostics = diagnostics.as_array().unwrap();
+    assert_eq!(diagnostics.len(), 1);
+    assert_eq!(diagnostics[0]["filename"], "nested/AGENTS.md");
+    assert_eq!(diagnostics[0]["code"], "KND001");
+}
+
+#[test]
 fn init_agent_suggestions_follow_default_check_before_generated_exclusions() {
     let workspace = TempDir::new().unwrap();
     let root = workspace.path();

@@ -661,6 +661,11 @@ fn agent_kind_suggestions(workspace: &Workspace) -> Vec<&'static str> {
         let Ok(config) = workspace.config_for(path) else {
             continue;
         };
+        if config.source.as_deref() != workspace.config.source.as_deref()
+            || config.directory.as_path() != workspace.config.directory.as_path()
+        {
+            continue;
+        }
         if !config.includes(path) || config.excludes(path) {
             continue;
         }
