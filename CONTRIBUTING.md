@@ -146,11 +146,9 @@ Open the pull request as a draft while the work is in progress. Merging
 requires approval from a maintainer.
 
 You are responsible for every line in your pull request, including lines an AI
-tool wrote. Read the whole diff before requesting review, and name the tool in
-the description if it wrote part of the change. Open another pull request only
-after a maintainer has reviewed your current one. A pull request that shows
-its author did not review it, such as one that edits files unrelated to the
-issue, may be closed without a detailed review.
+tool wrote, so read the whole diff before requesting review. A pull request
+that shows its author did not review it, such as one that edits files
+unrelated to the issue, may be closed without a detailed review.
 
 ## License
 

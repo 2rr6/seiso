@@ -1,5 +1,5 @@
 include = ["**/*.md"]
-exclude = ["tests/fixtures/**"]
+exclude = ["tests/fixtures/**", ".github/pull_request_template.md"]
 
 [[kinds]]
 path = "README.md"
