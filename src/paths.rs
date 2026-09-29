@@ -273,7 +273,8 @@ pub(crate) fn select_target(
 }
 
 /// Each written component that differs from the entry's is its lowercase form.
-/// Generators find pages by their exact `.md` or `.mdx` extension.
+/// The `.md` or `.mdx` extension comes from seiso, not from the link, so it
+/// must match exactly.
 fn lowercase_route(written: &str, actual: &str) -> bool {
     Path::new(written).extension() == Path::new(actual).extension()
         && written
