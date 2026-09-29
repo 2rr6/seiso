@@ -317,6 +317,64 @@ impl Rule {
             KindScope::Procedural => ["howto", "reference", "runbook"].contains(&kind),
         }
     }
+
+    /// This rule's page at the tag of this seiso version.
+    pub fn url(&self) -> String {
+        repository_url(&format!("docs/rules/{}.md", self.code))
+    }
+
+    /// The embedded page with its relative links pointing at this version's
+    /// tag, so they still open outside a seiso checkout.
+    pub fn standalone_documentation(&self) -> String {
+        let source = self.documentation;
+        let Ok(document) = crate::md::parse(source) else {
+            return source.to_owned();
+        };
+        let mut spans: Vec<_> = document
+            .links
+            .iter()
+            // Only a destination written without escapes can be replaced at its span.
+            .filter(|link| {
+                let span = link.destination_span;
+                source.get(span.start..span.end) == Some(link.destination.as_str())
+                    && !link.destination.starts_with(['#', '/'])
+                    && !crate::paths::has_scheme(&link.destination)
+            })
+            .map(|link| link.destination_span)
+            .collect();
+        spans.sort_by_key(|span| span.start);
+        // Reference links share their definition's span.
+        spans.dedup();
+        let mut output = source.to_owned();
+        for span in spans.into_iter().rev() {
+            let destination = &source[span.start..span.end];
+            let (path, suffix) =
+                destination.split_at(destination.find(['#', '?']).unwrap_or(destination.len()));
+            let mut segments = vec!["docs", "rules"];
+            for segment in path.split('/') {
+                match segment {
+                    "" | "." => {}
+                    ".." => {
+                        segments.pop();
+                    }
+                    segment => segments.push(segment),
+                }
+            }
+            output.replace_range(
+                span.start..span.end,
+                &(repository_url(&segments.join("/")) + suffix),
+            );
+        }
+        output
+    }
+}
+
+/// A repository file at the tag of this seiso version.
+fn repository_url(path: &str) -> String {
+    format!(
+        "https://github.com/scarletkc/seiso/blob/v{}/{path}",
+        env!("CARGO_PKG_VERSION")
+    )
 }
 
 #[derive(Debug, PartialEq, Eq)]
